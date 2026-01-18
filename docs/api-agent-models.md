@@ -37,7 +37,7 @@ The server follows these steps to generate the configuration:
     - Retrieves the `provider_code` from the `model_providers` collection.
     - Flattens the `config_json` from the database and injects the `provider_code` as the `type` field.
 5.  **Secret Resolution:** If a configuration contains a `secret_ref`, the server looks up the corresponding `api_key` from the `user_credentials` collection and replaces the reference with the actual key.
-6.  **LLM Reference Handling:** Some modules (like Intent or Memory) might reference an LLM. The system tracks these references.
+6.  **LLM Reference Handling:** Some modules (like Intent or Memory) might reference an LLM by ID in their parameters (e.g., `{"llm": "some_llm_id"}`). The system automatically detects these references, loads the corresponding LLM configuration, and attaches it to the `LLM` key in the root `data` object to ensure the client has all necessary model details.
 
 #### 4. Response Structure
 The response is wrapped in a standard success envelope.

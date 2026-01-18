@@ -118,7 +118,7 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 			m.resolveSecretReference(e.App, modelConfig)
 			selectedModule[modelType] = modelConfig.ID
 			if modelConfig.isLLMReference() {
-				llmIDs = append(llmIDs, modelConfig.ID)
+				llmIDs = append(llmIDs, modelConfig.Param["llm"])
 			}
 
 			if response.ModelConfigMap[modelType] == nil {
@@ -138,8 +138,22 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 	_ = loadModelConfig(agent.MemModelID, "Memory")
 	_ = loadModelConfig(agent.IntentModelID, "Intent")
 
+	// Load referenced LLMs
+	for _, llmID := range llmIDs {
+		if response.ModelConfigMap["LLM"] != nil && response.ModelConfigMap["LLM"][llmID] != nil {
+			continue
+		}
+		modelConfig, err := getModelConfigJson(llmID, "LLM")
+		if err == nil && modelConfig != nil {
+			m.resolveSecretReference(e.App, modelConfig)
+			if response.ModelConfigMap["LLM"] == nil {
+				response.ModelConfigMap["LLM"] = make(map[string]*ModelConfigJson)
+			}
+			response.ModelConfigMap["LLM"][modelConfig.ID] = modelConfig
+		}
+	}
+
 	response.SelectedModule = selectedModule
-	//response.ModelConfigMap["LLM"] = llmMap
 
 	return e.JSON(http.StatusOK, success(response))
 }
