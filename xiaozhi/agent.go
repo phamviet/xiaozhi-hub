@@ -27,7 +27,7 @@ func (m *Manager) getDeviceByMacAddress(mac string) (*Device, error) {
 	return &row, nil
 }
 
-func (m *Manager) getModeConfigByIDOrDefault(id string, modelType string) (*ModelConfig, error) {
+func (m *Manager) getModelConfigByIDOrDefault(id string, modelType string) (*ModelConfig, error) {
 	if id == "" {
 		return m.getDefaultModeConfig(modelType)
 	}

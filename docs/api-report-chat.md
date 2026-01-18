@@ -21,14 +21,14 @@ The request expects a JSON body with chat details and optional Base64 encoded au
 }
 ```
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `audioBase64` | `string` | (Optional) Base64 encoded audio data. |
-| `chatType` | `int` | Type of chat message (e.g., `1` or `2`). |
-| `content` | `string` | The text content of the user message. |
-| `macAddress` | `string` | The MAC address of the device. |
-| `reportTime` | `long` | Timestamp when the message was reported. |
-| `sessionId` | `string` | Unique session/conversation identifier. |
+| Field | Type | Description                                                            |
+| :--- | :--- |:-----------------------------------------------------------------------|
+| `audioBase64` | `string` | (Optional) Base64 encoded audio data.                                  |
+| `chatType` | `int` | Type of chat message (e.g., `1` for User or `2` for Assistant).        |
+| `content` | `string` | The text content of the user message.                                  |
+| `macAddress` | `string` | The MAC address of the device.                                         |
+| `reportTime` | `long` | Timestamp when the message was reported.                               |
+| `sessionId` | `string` | Unique session/conversation identifier.                                |
 
 #### 3. Processing Logic
 1.  **Request Parsing:** Binds the JSON body to a structured object.

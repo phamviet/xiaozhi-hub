@@ -89,7 +89,7 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 	}
 
 	getModelConfigJson := func(id string, modelType string) (*ModelConfigJson, error) {
-		modelConfig, err := m.getModeConfigByIDOrDefault(id, modelType)
+		modelConfig, err := m.getModelConfigByIDOrDefault(id, modelType)
 		if err != nil {
 			return nil, err
 		}
