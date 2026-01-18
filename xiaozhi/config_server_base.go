@@ -2,7 +2,6 @@ package xiaozhi
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"dario.cat/mergo"
@@ -72,20 +71,25 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 	}
 
 	if err := mergo.Merge(&destMap, srcMap, mergo.WithOverride); err != nil {
-		log.Fatal(err)
+		e.App.Logger().Error("Failed to merge baseConfig", "error", err)
+		return e.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
 	e.App.Logger().Info("Returning config", "baseConfig", baseConfig)
 
-	return e.JSON(http.StatusOK, success(destMap))
+	return e.JSON(http.StatusOK, successResponse(destMap))
 }
 
-type Response struct {
+type XiaozhiResponse struct {
 	Code int    `json:"code"`
 	Data any    `json:"data"`
 	Msg  string `json:"msg"`
 }
 
-func success(data any) any {
-	return &Response{Code: 0, Data: data, Msg: "success"}
+func successResponse(data any) any {
+	return &XiaozhiResponse{Code: 0, Data: data, Msg: "success"}
+}
+
+func errorResponse(message string) any {
+	return &XiaozhiResponse{Code: 1, Msg: message}
 }

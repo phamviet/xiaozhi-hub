@@ -34,14 +34,16 @@ func (m *Manager) Initialize(hub *hub.Hub) error {
 
 func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 	xiaozhi := se.Router.Group("/xiaozhi")
-	xiaozhi.GET("/ota", m.otaConfig)
+	xiaozhi.POST("/ota", m.otaRequest)
+
+	// Ensure ending slash is supported
+	xiaozhi.POST("/ota/", m.otaRequest)
 
 	// Auth with manager secret
 	apiAuth := xiaozhi.Group("")
 
 	// Server base config
 	apiAuth.POST("/config/server-base", m.serverBaseConfig)
-	apiAuth.GET("/config/server-base", m.serverBaseConfig)
 
 	// Get agent models
 	apiAuth.POST("/config/agent-models", m.agentModelsConfig)
