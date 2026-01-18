@@ -57,9 +57,6 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 		return err
 	}
 
-	baseConfig.EndPrompt.Enabled = false
-	baseConfig.EndPrompt.Prompt = nil
-
 	baseConfigBytes, err := json.Marshal(baseConfig)
 	if err != nil {
 		return err

@@ -49,8 +49,8 @@ func (r *ModelsConfigResponse) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// serverBase /xiaozhi/config/agent-models
-func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
+// getAgentModels /xiaozhi/config/agent-models
+func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 	var req ClientRequest
 	if err := e.BindBody(&req); err != nil {
 		return err
@@ -109,7 +109,6 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 	}
 
 	var selectedModule = make(map[string]string)
-	//var llmMap = make(map[string]*ModelConfigJson)
 	llmIDs := make([]string, 0)
 
 	loadModelConfig := func(id string, modelType string) error {
