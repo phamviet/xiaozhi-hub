@@ -28,8 +28,12 @@ The request expects a JSON body with the device's identification.
 The server follows these steps to generate the configuration:
 
 1.  **Device Identification:** Looks up the device in the `ai_device` collection using the provided `macAddress`.
-2.  **Agent Retrieval:** Finds the associated AI Agent in the `ai_agent` collection via the `agent` ID on the device record.
-3.  **Base Response Initialization:**
+2.  **Device Binding Flow:** If the device is not found, the server initiates the binding flow:
+    - Generates a 6-digit random code.
+    - Stores the code in memory, mapped to the `macAddress` and `clientId`.
+    - Returns a response with error code `10042` and the generated code in the `msg` field.
+3.  **Agent Retrieval:** Finds the associated AI Agent in the `ai_agent` collection via the `agent` ID on the device record.
+4.  **Base Response Initialization:**
     - Loads the `system_prompt` and `summary_memory` from the Agent record.
     - Sets `chat_history_conf`: `2` (voice & message) if enabled on the agent, otherwise `0`.
 4.  **Module Configuration Loading:** For each required module type (`ASR`, `VAD`, `TTS`, `LLM`, `Memory`, `Intent`), it:
@@ -40,6 +44,35 @@ The server follows these steps to generate the configuration:
 6.  **LLM Reference Handling:** Some modules (like Intent or Memory) might reference an LLM by ID in their parameters (e.g., `{"llm": "some_llm_id"}`). The system automatically detects these references, loads the corresponding LLM configuration, and attaches it to the `LLM` key in the root `data` object to ensure the client has all necessary model details.
 
 #### 4. Response Structure
+##### 4.1. Success Response (code 0)
+The response is wrapped in a standard success envelope. See section 5 for the detailed `data` object structure.
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {}
+}
+```
+
+##### 4.2. Binding Needed Response (code 10042)
+If the device is not bound to any agent, this response is returned.
+
+```json
+{
+    "code": 10042,
+    "data": null,
+    "msg": "272728"
+}
+```
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `code` | `int` | `10042` indicates that the device is not bound. |
+| `data` | `null` | No data is returned in this case. |
+| `msg` | `string` | A 6-digit randomly generated code to be displayed to the user for binding. |
+
+#### 5. Detailed Response Structure (Success)
 The response is wrapped in a standard success envelope.
 
 ```json

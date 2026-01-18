@@ -8,11 +8,14 @@ import (
 var _ hub.Plugin = (*Manager)(nil)
 
 type Manager struct {
-	App core.App
+	App            core.App
+	BindingManager *DeviceBindingManager
 }
 
 func NewManager() *Manager {
-	return &Manager{}
+	return &Manager{
+		BindingManager: NewDeviceBindingManager(),
+	}
 }
 
 func (m *Manager) Name() string {
@@ -33,6 +36,7 @@ func (m *Manager) Initialize(hub *hub.Hub) error {
 }
 
 func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
+	hubAPI := se.Router.Group("/hub/api")
 	xiaozhi := se.Router.Group("/xiaozhi")
 	xiaozhi.POST("/ota", m.otaRequest)
 
@@ -53,6 +57,9 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 
 	// Emit chat summary
 	apiAuth.POST("/agent/chat-summary/{sessionId}/save", m.summaryChat)
+
+	// Device binding (manually from Hub UI)
+	hubAPI.POST("/device/bind", m.deviceBind)
 
 	return nil
 }

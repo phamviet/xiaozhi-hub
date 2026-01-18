@@ -59,7 +59,12 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 	e.App.Logger().Info("Received agent models config request", "req", req, "headers", e.Request.Header)
 	device, err := m.getDeviceByMacAddress(req.MacAddress)
 	if err != nil {
-		return e.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		code := m.BindingManager.GetOrGenerateCode(req.MacAddress, req.ClientId)
+		return e.JSON(http.StatusOK, map[string]interface{}{
+			"code": 10042,
+			"data": nil,
+			"msg":  code,
+		})
 	}
 
 	agent, err := m.getAgentByID(device.AgentID)

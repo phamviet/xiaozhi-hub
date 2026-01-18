@@ -7,6 +7,8 @@ import (
 )
 
 type AIAgent struct {
+	ID                 string `db:"id"`
+	UserID             string `db:"user"`
 	Name               string `db:"agent_name"`
 	SystemPrompt       string `db:"system_prompt"`
 	SummaryMemory      string `db:"summary_memory"`
