@@ -1,0 +1,56 @@
+package xiaozhi
+
+import (
+	"github.com/phamviet/xiaozhi-hub/internal/hub"
+	"github.com/pocketbase/pocketbase/core"
+)
+
+var _ hub.Plugin = (*Manager)(nil)
+
+type Manager struct {
+	App core.App
+}
+
+func NewManager() *Manager {
+	return &Manager{}
+}
+
+func (m *Manager) Name() string {
+	return "xiaozhi"
+}
+
+func (m *Manager) Initialize(hub *hub.Hub) error {
+	m.App = hub.App
+	hub.App.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		if err := m.registerAuthRoutes(e); err != nil {
+			return err
+		}
+
+		return e.Next()
+	})
+
+	return nil
+}
+
+func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
+	xiaozhi := se.Router.Group("/xiaozhi")
+	xiaozhi.GET("/ota", m.otaConfig)
+
+	// Auth with manager secret
+	apiAuth := xiaozhi.Group("")
+
+	// Server base config
+	apiAuth.POST("/config/server-base", m.serverBaseConfig)
+	apiAuth.GET("/config/server-base", m.serverBaseConfig)
+
+	// Get agent models
+	apiAuth.POST("/config/agent-models", m.agentModelsConfig)
+
+	// report chat
+	apiAuth.POST("/agent/chat-history/report", m.reportChat)
+
+	// Emit chat summary
+	apiAuth.POST("/agent/chat-summary/{sessionId}/save", m.summaryChat)
+
+	return nil
+}

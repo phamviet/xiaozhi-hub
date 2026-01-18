@@ -1,0 +1,13 @@
+.ai/
+# IDE
+.vscode/
+.idea/
+.tmp/
+
+ui/dist/**
+!ui/dist/.keep
+
+pb_data/
+
+node_modules
+testdata
