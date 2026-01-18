@@ -138,7 +138,7 @@ func (m *Manager) agentModelsConfig(e *core.RequestEvent) error {
 
 	_ = loadModelConfig(agent.ASRModelID, "ASR")
 	_ = loadModelConfig(agent.VADModelID, "VAD")
-	_ = loadModelConfig(agent.VADModelID, "TTS")
+	_ = loadModelConfig(agent.TTSModelID, "TTS")
 	_ = loadModelConfig(agent.LLMModelID, "LLM")
 	_ = loadModelConfig(agent.MemModelID, "Memory")
 	_ = loadModelConfig(agent.IntentModelID, "Intent")
