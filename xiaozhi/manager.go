@@ -50,7 +50,7 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 	apiAuth.POST("/config/server-base", m.serverBaseConfig)
 
 	// Get agent models
-	apiAuth.POST("/config/agent-models", m.agentModelsConfig)
+	apiAuth.POST("/config/agent-models", m.getAgentModels)
 
 	// report chat
 	apiAuth.POST("/agent/chat-history/report", m.reportChat)

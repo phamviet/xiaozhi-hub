@@ -7,8 +7,10 @@ import (
 	"github.com/phamviet/xiaozhi-hub/internal/hub"
 	_ "github.com/phamviet/xiaozhi-hub/migrations"
 	"github.com/phamviet/xiaozhi-hub/xiaozhi"
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/seeds"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/spf13/cobra"
 )
 
 func main() {
@@ -35,6 +37,17 @@ func initializeApp() *pocketbase.PocketBase {
 	migratecmd.MustRegister(baseApp, baseApp.RootCmd, migratecmd.Config{
 		Automigrate: false,
 		Dir:         "./migrations",
+	})
+
+	baseApp.RootCmd.AddCommand(&cobra.Command{
+		Use:   "seeds",
+		Short: "Seed the database with initial data",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := seeds.Seed(baseApp); err != nil {
+				log.Fatal(err)
+			}
+			log.Println("Database seeded successfully")
+		},
 	})
 
 	return baseApp

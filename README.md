@@ -42,6 +42,7 @@ Detailed documentation for individual API routes can be found in the `/docs` dir
 ## 🏁 Getting Started
 
 1. **Environment Setup**: Ensure you have Go 1.25+ installed.
-2. **Build**: Run `go build` to compile the application.
-3. **Run**: Execute `./pb serve` to start the PocketBase server.
-4. **Admin UI**: Access the dashboard at `http://127.0.0.1:8090/_/` to configure system parameters and manage collections.
+2. **Build**: Run `go build -o pb main.go` to compile the application.
+3. **Seed**: Run `./pb seeds` to load default system parameters and model configurations.
+4. **Run**: Execute `./pb serve` to start the PocketBase server.
+5. **Admin UI**: Access the dashboard at `http://127.0.0.1:8090/_/` to configure system parameters and manage collections.
