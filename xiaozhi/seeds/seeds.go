@@ -82,31 +82,231 @@ func seedModelProviders(app core.App) error {
 	}
 
 	providers := []map[string]interface{}{
-		{"id": "1xie8bsxclw5hlg", "name": "OPENAI", "provider_code": "openai", "model_type": "ASR"},
-		{"id": "740an4pex5vb8lc", "name": "OPENAPI", "provider_code": "openai", "model_type": "LLM"},
-		{"id": "d0bkxbo8cz1yh72", "name": "OPENAI", "provider_code": "openai", "model_type": "TTS"},
-		{"id": "e5hl2el2sstm5af", "name": "EdgeTTS", "provider_code": "edge", "model_type": "TTS"},
-		{"id": "brzsnbmj7f1uoff", "name": "Gemini", "provider_code": "gemini", "model_type": "LLM"},
-		{"id": "i0k1rmawtjuoai6", "name": "VAD_SileroVAD", "provider_code": "silero", "model_type": "VAD"},
-		{"id": "9n4cc3xz3r6m7j0", "name": "Intent_LLM", "provider_code": "intent_llm", "model_type": "Intent"},
-		{"id": "j4urro5wwnfj1z6", "name": "MemLocalShort", "provider_code": "mem_local_short", "model_type": "Memory"},
+		{
+			"id":            "1xie8bsxclw5hlg",
+			"name":          "OPENAI",
+			"provider_code": "openai",
+			"model_type":    "ASR",
+			"fields": `[
+  {
+    "key": "base_url",
+    "type": "string",
+    "label": "Base URL"
+  },
+  {
+    "key": "model_name",
+    "type": "string",
+    "label": "Model name"
+  },
+  {
+    "key": "api_key",
+    "type": "string",
+    "label": "API key"
+  },
+  {
+    "key": "secret_ref",
+    "type": "string",
+    "label": "Reference a credential"
+  },
+  {
+    "key": "out_dir",
+    "value": "tmp/"
+  }
+]`,
+		},
+		{
+			"id":            "740an4pex5vb8lc",
+			"name":          "OPENAPI",
+			"provider_code": "openai",
+			"model_type":    "LLM",
+			"fields": `[
+  {
+    "key": "base_url",
+    "type": "string",
+    "label": "Base URL"
+  },
+  {
+    "key": "model_name",
+    "type": "string",
+    "label": "Model name"
+  },
+  {
+    "key": "ref_credential",
+    "type": "string",
+    "label": "Use credential"
+  },
+  {
+    "key": "api_key",
+    "type": "string",
+    "label": "API key"
+  },
+  {
+    "key": "temperature",
+    "type": "number",
+    "label": "temperature"
+  },
+  {
+    "key": "max_tokens",
+    "type": "number",
+    "label": "max_tokens"
+  },
+  {
+    "key": "top_p",
+    "type": "number",
+    "label": "top_p"
+  },
+  {
+    "key": "top_k",
+    "type": "number",
+    "label": "top_k"
+  },
+  {
+    "key": "frequency_penalty",
+    "type": "number",
+    "label": "frequency_penalty"
+  }
+]`,
+		},
+		{
+			"id":            "d0bkxbo8cz1yh72",
+			"name":          "OPENAI",
+			"provider_code": "openai",
+			"model_type":    "TTS",
+			"fields": `[
+  {
+    "key": "base_url",
+    "type": "string",
+    "label": "Base URL"
+  },
+  {
+    "key": "model_name",
+    "type": "string",
+    "label": "Model name"
+  },
+  {
+    "key": "api_key",
+    "type": "string",
+    "label": "API key"
+  },
+  {
+    "key": "secret_ref",
+    "type": "string",
+    "label": "Reference a credential"
+  },
+  {
+    "key": "voice",
+    "type": "string",
+    "label": "Voice"
+  },
+  {
+    "key": "speed",
+    "type": "number",
+    "label": "Speed"
+  }
+]`,
+		},
+		{
+			"id":            "e5hl2el2sstm5af",
+			"name":          "EdgeTTS",
+			"provider_code": "edge",
+			"model_type":    "TTS",
+			"fields": `[
+  {
+    "key": "private_voice",
+    "type": "string",
+    "label": "Voice"
+  }
+]`,
+		},
+		{
+			"id":            "brzsnbmj7f1uoff",
+			"name":          "Gemini",
+			"provider_code": "gemini",
+			"model_type":    "LLM",
+			"fields": `[
+  {
+    "key": "api_key",
+    "type": "string",
+    "label": "API key"
+  },
+  {
+    "key": "secret_ref",
+    "type": "string",
+    "label": "Use credential"
+  },
+  {
+    "key": "model_name",
+    "type": "string",
+    "label": "Model name"
+  }
+]`,
+		},
+		{
+			"id":            "i0k1rmawtjuoai6",
+			"name":          "VAD_SileroVAD",
+			"provider_code": "silero",
+			"model_type":    "VAD",
+			"fields": `[
+  {
+    "key": "threshold",
+    "type": "number",
+    "label": "threshold"
+  },
+  {
+    "key": "model_dir",
+    "type": "string",
+    "label": "Model dir"
+  },
+  {
+    "key": "min_silence_duration_ms",
+    "type": "number",
+    "label": "min_silence_duration_ms"
+  }
+]`,
+		},
+		{
+			"id":            "9n4cc3xz3r6m7j0",
+			"name":          "Intent_LLM",
+			"provider_code": "intent_llm",
+			"model_type":    "Intent",
+			"fields": `[
+  {
+    "key": "llm",
+    "type": "string",
+    "label": "Reference LLM"
+  }
+]`,
+		},
+		{
+			"id":            "j4urro5wwnfj1z6",
+			"name":          "MemLocalShort",
+			"provider_code": "mem_local_short",
+			"model_type":    "Memory",
+			"fields": `[
+  {
+    "key": "llm",
+    "type": "string",
+    "label": "LLM"
+  }
+]`,
+		},
 	}
 
 	for _, p := range providers {
-		existing, err := app.FindRecordById("model_providers", p["id"].(string))
+		_, err := app.FindRecordById("model_providers", p["id"].(string))
 		if err != nil {
 			record := core.NewRecord(collection)
 			record.Set("id", p["id"].(string))
 			record.Set("name", p["name"])
 			record.Set("provider_code", p["provider_code"])
 			record.Set("model_type", p["model_type"])
+			record.Set("fields", p["fields"])
 			if err := app.Save(record); err != nil {
 				return err
 			}
 			log.Printf("Created model_provider: %s\n", p["name"])
 		} else {
 			log.Printf("Skipped model_provider: %s (already exists)\n", p["name"])
-			_ = existing
 		}
 	}
 	return nil

@@ -1,6 +1,9 @@
 package xiaozhi
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/phamviet/xiaozhi-hub/internal/hub"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -45,6 +48,7 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 
 	// Auth with manager secret
 	apiAuth := xiaozhi.Group("")
+	apiAuth.BindFunc(m.requireAuth)
 
 	// Server base config
 	apiAuth.POST("/config/server-base", m.serverBaseConfig)
@@ -62,4 +66,29 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 	hubAPI.POST("/device/bind", m.deviceBind)
 
 	return nil
+}
+
+func (m *Manager) requireAuth(e *core.RequestEvent) error {
+	authHeader := e.Request.Header.Get("Authorization")
+	if authHeader == "" {
+		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Missing Authorization header"})
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid Authorization header format"})
+	}
+	token := parts[1]
+
+	record, err := m.App.FindFirstRecordByData("sys_params", "name", "server.secret")
+	if err != nil {
+		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Server secret not configured"})
+	}
+
+	secret := record.GetString("value")
+	if secret == "" || token != secret {
+		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
+	}
+
+	return e.Next()
 }
