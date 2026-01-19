@@ -32,17 +32,15 @@ ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOGC=75 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-w -s" -o pb .
 
 # ? -------------------------
-FROM alpine
-
-RUN apk add --no-cache \
-    ca-certificates
+FROM litestream/litestream
 
 COPY --from=builder /app/pb /
+COPY scripts/docker-entrypoint.sh /
 
 # Ensure data persistence across container recreations
 VOLUME ["/pb_data"]
 
 EXPOSE 8090
 
-ENTRYPOINT [ "/pb" ]
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
 CMD ["serve", "--http=0.0.0.0:8090"]
