@@ -5,9 +5,9 @@ DB_PATH=${DB_PATH:-pb_data/data.db}
 
 if [ -n "$FLY_APP_NAME" ]; then
   echo "From Fly.io. Hello ${FLY_APP_NAME}!"
-  # Auto enable Litestream if running from Fly.io
+  # Auto enable Litestream if running inside Fly.io
   if [ -n "$BUCKET_NAME" ]; then
-    REPLICA_URL="s3://${BUCKET_NAME}?endpoint=fly.storage.tigris.dev&region=auto"
+    REPLICA_URL="s3://${BUCKET_NAME}/${DB_PATH}?endpoint=fly.storage.tigris.dev&region=auto"
   fi
 fi
 
