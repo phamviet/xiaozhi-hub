@@ -71,7 +71,7 @@ func (h *Hub) StartHub() error {
 
 // preStart sets up initial configuration (collections, settings, etc.)
 func (h *Hub) preStart(e *core.ServeEvent) error {
-	if err := h.registerAuthRoutes(e); err != nil {
+	if err := h.registerRoutes(e); err != nil {
 		return err
 	}
 
@@ -101,7 +101,11 @@ func (h *Hub) preStart(e *core.ServeEvent) error {
 }
 
 // custom api routes
-func (h *Hub) registerAuthRoutes(se *core.ServeEvent) error {
+func (h *Hub) registerRoutes(se *core.ServeEvent) error {
+	se.Router.GET("/health", func(e *core.RequestEvent) error {
+		return e.JSON(http.StatusOK, map[string]bool{"ok": true})
+	})
+
 	// auth optional routes
 	apiNoAuth := se.Router.Group("/api")
 	// check if first time setup on login page

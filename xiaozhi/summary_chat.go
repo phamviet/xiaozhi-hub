@@ -18,19 +18,24 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 
 	// 1. Find the agent from sessionId (by looking up chat history)
 	var chatHistory []struct {
-		AgentID  string `db:"agent_id"`
+		AgentID  string `db:"agent"`
 		Content  string `db:"content"`
 		ChatType string `db:"chat_type"`
 	}
 
-	err := e.App.DB().Select("agent_id", "content", "chat_type").
+	err := e.App.DB().Select("agent", "content", "chat_type").
 		From("ai_agent_chat_history").
 		Where(dbx.HashExp{"conversation_id": sessionId}).
 		OrderBy("created ASC").
 		All(&chatHistory)
 
-	if err != nil || len(chatHistory) == 0 {
-		return e.JSON(http.StatusNotFound, map[string]string{"error": "Session not found or no chat history"})
+	if err != nil {
+		e.App.Logger().Error("fetch chat history error", "error", err.Error())
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	if len(chatHistory) == 0 {
+		return e.JSON(http.StatusNotFound, map[string]string{"error": "Chat history not found"})
 	}
 
 	agentID := chatHistory[0].AgentID
