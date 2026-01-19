@@ -3,6 +3,7 @@ package migrations
 import (
 	"os"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/seeds"
 	"github.com/pocketbase/pocketbase/core"
 	m "github.com/pocketbase/pocketbase/migrations"
 )
@@ -59,6 +60,10 @@ func init() {
 
 		if err := app.Save(superUser); err != nil {
 			return err
+		}
+
+		if err := seeds.Seed(app); err != nil {
+			app.Logger().Error("Database seeding error", "error", err.Error())
 		}
 
 		return nil

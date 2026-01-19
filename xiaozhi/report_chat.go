@@ -41,8 +41,9 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 	}
 
 	record := core.NewRecord(collection)
+	record.Set("agent", device.AgentID)
+	record.Set("device", device.ID)
 	record.Set("mac_address", req.MacAddress)
-	record.Set("agent_id", device.AgentID)
 	record.Set("conversation_id", req.SessionId)
 	record.Set("content", req.Content)
 	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
@@ -59,7 +60,7 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create file from bytes"})
 		}
 
-		record.Set("audio", file)
+		record.Set("chat_audio", file)
 	}
 
 	if err := e.App.Save(record); err != nil {

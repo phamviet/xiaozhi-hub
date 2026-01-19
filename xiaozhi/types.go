@@ -24,6 +24,7 @@ type AIAgent struct {
 }
 
 type Device struct {
+	ID            string         `db:"id"`
 	MacAddress    string         `db:"mac_address"`
 	UserID        string         `db:"user"`
 	AgentID       string         `db:"agent"`

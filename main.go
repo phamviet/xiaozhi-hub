@@ -35,7 +35,7 @@ func initializeApp() *pocketbase.PocketBase {
 
 	// Enable auto creation of migration files when making collection changes in the Admin UI
 	migratecmd.MustRegister(baseApp, baseApp.RootCmd, migratecmd.Config{
-		Automigrate: false,
+		Automigrate: isDev,
 		Dir:         "./migrations",
 	})
 
