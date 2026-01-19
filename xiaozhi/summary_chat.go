@@ -7,6 +7,7 @@ import (
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // summaryChat /xiaozhi/agent/chat-summary/{sessionId}/save
@@ -18,9 +19,10 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 
 	// 1. Find the agent from sessionId (by looking up chat history)
 	var chatHistory []struct {
-		AgentID  string `db:"agent"`
-		Content  string `db:"content"`
-		ChatType string `db:"chat_type"`
+		AgentID  string         `db:"agent"`
+		Content  string         `db:"content"`
+		ChatType string         `db:"chat_type"`
+		Created  types.DateTime `db:"created"`
 	}
 
 	err := e.App.DB().Select("agent", "content", "chat_type").
@@ -101,11 +103,17 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	// 6. Build conversation text
 	var convBuilder strings.Builder
 	for _, msg := range chatHistory {
-		role := "User"
 		if msg.ChatType == "2" { // 1 is User, 2 is Assistant
-			role = "Assistant"
+			content := msg.Content
+			if len(content) > 250 {
+				prefix := content[:100]
+				suffix := content[len(content)-100:]
+				content = fmt.Sprintf("%s ... [CONTENT OMITTED] ... %s", prefix, suffix)
+			}
+			convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", "Assistant", content))
+		} else {
+			convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", "User", msg.Content))
 		}
-		convBuilder.WriteString(fmt.Sprintf("%s: %s\n", role, msg.Content))
 	}
 
 	// 7. Call LLM
@@ -114,11 +122,20 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	userMsg := fmt.Sprintf("Current Conversation:\n%s", convBuilder.String())
+	existingMemory := "No prior memory available."
 	if agent.SummaryMemory != "" {
-		userMsg = fmt.Sprintf("Previous Memories:\n%s\n\n%s", agent.SummaryMemory, userMsg)
+		existingMemory = agent.SummaryMemory
 	}
 
+	userMsg := fmt.Sprintf(`Generate user long-term memory based on this conversation log.
+--
+EXISTING MEMORY:
+%s
+--
+CONVERSATION LOG:
+%s
+--
+`, existingMemory, convBuilder.String())
 	messages := []LLMMessage{
 		{Role: "system", Content: sysPrompt},
 		{Role: "user", Content: userMsg},

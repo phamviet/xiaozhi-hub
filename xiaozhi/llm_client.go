@@ -13,8 +13,9 @@ type LLMMessage struct {
 }
 
 type LLMRequest struct {
-	Model    string       `json:"model"`
-	Messages []LLMMessage `json:"messages"`
+	Model       string       `json:"model"`
+	Temperature *float64     `json:"temperature"`
+	Messages    []LLMMessage `json:"messages"`
 }
 
 type LLMResponse struct {
@@ -34,9 +35,11 @@ type OpenAIClient struct {
 }
 
 func (c *OpenAIClient) Chat(messages []LLMMessage) (string, error) {
+	temp := 0.0
 	reqBody := LLMRequest{
-		Model:    c.Model,
-		Messages: messages,
+		Model:       c.Model,
+		Messages:    messages,
+		Temperature: &temp,
 	}
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
