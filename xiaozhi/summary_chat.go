@@ -45,11 +45,11 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	}
 
 	// 3. Look at mem_model_id
-	if agent.MemModelID == "" {
-		return e.JSON(http.StatusOK, successResponse("No memory model configured"))
-	}
+	//if agent.MemModelID == "" {
+	//	return e.JSON(http.StatusOK, successResponse("No memory model configured"))
+	//}
 
-	// 4. Fetch memory model config
+	// 4. Fetch memory model config. If mem_model_id is empty, using the default Memory model
 	modelConfig, err := m.getModelConfigByIDOrDefault(agent.MemModelID, "Memory")
 	if err != nil {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get memory model config"})
