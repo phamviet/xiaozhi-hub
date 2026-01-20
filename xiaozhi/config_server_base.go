@@ -58,14 +58,14 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 	}
 
 	// 2. Merge sys_params into baseConfig
-	sysParams, err := m.getSysParams("server.secret", "prompt_template", "server.websocket")
+	sysParams, err := m.getSysParams("server.secret", "agent.base_prompt", "server.websocket")
 	if err != nil {
 		return logError(err)
 	}
 
 	baseConfig.Server.Secret = *sysParams["server.secret"]
 	baseConfig.Server.Websocket = *sysParams["server.websocket"]
-	baseConfig.AgentBasePrompt = sysParams["agent_base_prompt"]
+	baseConfig.AgentBasePrompt = sysParams["agent.base_prompt"]
 
 	baseConfigBytes, err := json.Marshal(baseConfig)
 	if err != nil {

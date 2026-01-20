@@ -40,7 +40,6 @@ func seedSysParams(app core.App) error {
 		{"name": "memory.system_prompt", "value": prompt},
 		{"name": "server.secret", "value": uuid.New().String()},
 		{"name": "server.websocket", "value": "ws://REPLACE_WITH_YOUR_SERVER_IP:8090/xiaozhi/v1"},
-		{"name": "server.ota", "value": "http://REPLACE_WITH_YOUR_SERVER_IP:8090/xiaozhi/ota/"},
 	}
 
 	collection, err := app.FindCollectionByNameOrId("sys_params")
