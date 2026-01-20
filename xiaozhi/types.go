@@ -82,3 +82,8 @@ func (c *ModelConfigJson) isLLMReference() bool {
 
 	return isLLM
 }
+
+type SysParam struct {
+	Name  string `db:"name"`
+	Value string `db:"value"`
+}

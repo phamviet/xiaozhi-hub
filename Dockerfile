@@ -9,7 +9,7 @@ COPY ui/ ./
 RUN bun run build
 
 # ? -------------------------
-FROM --platform=$BUILDPLATFORM golang:alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
 
 WORKDIR /app
 
@@ -21,17 +21,11 @@ RUN go mod download
 COPY . ./
 COPY --from=ui-builder /app/ui/dist ./ui/dist
 
-RUN apk add --no-cache \
-    unzip \
-    ca-certificates
-
-RUN update-ca-certificates
-
 # Build
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOGC=75 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-w -s" -o pb .
 
-# ? -------------------------
+# https://github.com/benbjohnson/litestream/blob/main/Dockerfile
 FROM litestream/litestream
 
 COPY --from=builder /app/pb /

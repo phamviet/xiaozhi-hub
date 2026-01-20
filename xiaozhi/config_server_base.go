@@ -13,25 +13,21 @@ type BaseConfig struct {
 	Server struct {
 		Secret            string `json:"secret"`
 		Websocket         string `json:"websocket"`
-		OTA               string `json:"ota"`
 		MCPEndpoint       string `json:"mcp_endpoint"`
 		AllowUserRegister bool   `json:"allow_user_register"`
 		Auth              struct {
 			Enabled bool `json:"enabled"`
 		} `json:"auth"`
-		PrivateKey string `json:"private_key"`
-		PublicKey  string `json:"public_key"`
 	} `json:"server"`
-	TTSTimeout     int               `json:"tts_timeout"`
-	WakeupWords    []string          `json:"wakeup_words"`
-	ExitCommands   []string          `json:"exit_commands"`
-	SelectedModule map[string]string `json:"selected_module"`
-	Prompt         *string           `json:"prompt"`
-	EndPrompt      struct {
+	TTSTimeout      int               `json:"tts_timeout"`
+	WakeupWords     []string          `json:"wakeup_words"`
+	ExitCommands    []string          `json:"exit_commands"`
+	SelectedModule  map[string]string `json:"selected_module"`
+	AgentBasePrompt *string           `json:"agent_base_prompt"`
+	EndPrompt       struct {
 		Enabled bool    `json:"enable"`
 		Prompt  *string `json:"prompt"`
 	} `json:"end_prompt"`
-	SummaryMemory *string `json:"summary_memory"`
 }
 
 // serverBaseConfig /xiaozhi/config/server-base
@@ -42,7 +38,6 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "No enabled config found"})
 	}
 
-	// 2. Merge sys_params to set secret
 	// Get the config value as map
 	sysValue := config.GetRaw("value").(types.JSONRaw)
 	var destMap map[string]interface{}
@@ -56,6 +51,21 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 		e.App.Logger().Error("Unmarshal baseConfig", "error", err)
 		return err
 	}
+
+	logError := func(err error) error {
+		e.App.Logger().Error(err.Error())
+		return e.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
+	}
+
+	// 2. Merge sys_params into baseConfig
+	sysParams, err := m.getSysParams("server.secret", "prompt_template", "server.websocket")
+	if err != nil {
+		return logError(err)
+	}
+
+	baseConfig.Server.Secret = *sysParams["server.secret"]
+	baseConfig.Server.Websocket = *sysParams["server.websocket"]
+	baseConfig.AgentBasePrompt = sysParams["agent_base_prompt"]
 
 	baseConfigBytes, err := json.Marshal(baseConfig)
 	if err != nil {
@@ -71,8 +81,6 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 		e.App.Logger().Error("Failed to merge baseConfig", "error", err)
 		return e.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
-
-	e.App.Logger().Info("Returning config", "baseConfig", baseConfig)
 
 	return e.JSON(http.StatusOK, successResponse(destMap))
 }
