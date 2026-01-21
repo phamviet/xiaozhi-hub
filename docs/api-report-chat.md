@@ -38,11 +38,12 @@ The request expects a JSON body with chat details and optional Base64 encoded au
     - Creates a new file object using PocketBase's filesystem API.
 4.  **Record Creation:** Inserts a new record into the `ai_agent_chat_history` collection:
     - `mac_address`: From request.
-    - `agent_id`: From the identified device.
+    - `agent`: From the identified device.
+    - `device`: From the identified device.
     - `conversation_id`: Mapped from `sessionId`.
     - `content`: From request.
     - `chat_type`: From request (as string).
-    - `audio`: The processed audio file (if provided).
+    - `chat_audio`: The processed audio file (if provided).
 5.  **Persistence:** Saves the record to the database and filesystem.
 
 #### 4. Response Structure

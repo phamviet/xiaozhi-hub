@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react"
+import { AgentList } from "@/components/agents/AgentList"
 
 export default memo(() => {
 	document.title = "Home page"
@@ -7,7 +8,8 @@ export default memo(() => {
 		() => (
 			<>
 				<div className="grid gap-4">
-					Welcome!
+					<h1 className="text-2xl font-bold tracking-tight">My Agents</h1>
+					<AgentList />
 				</div>
 			</>
 		),
