@@ -40,11 +40,7 @@ export function AgentList() {
 	}
 
 	if (agents.length === 0) {
-		return (
-			<div className="text-center p-8 text-muted-foreground">
-				No agents found. Create one to get started.
-			</div>
-		)
+		return <div className="text-center p-8 text-muted-foreground">No agents found. Create one to get started.</div>
 	}
 
 	return (

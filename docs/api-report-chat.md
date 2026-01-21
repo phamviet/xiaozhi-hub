@@ -8,7 +8,7 @@ This endpoint allows devices to report user chat messages, including optional au
 - **Auth:** Protected by manager secret (Middleware level)
 
 #### 2. Request Structure
-The request expects a JSON body with chat details and optional Base64 encoded audio.
+The request expects a JSON body with chat details and optional Base64 encoded audio. The `chatId` corresponds to the ID of the parent `ai_agent_chat` record.
 
 ```json
 {
@@ -37,10 +37,7 @@ The request expects a JSON body with chat details and optional Base64 encoded au
     - Decodes the Base64 string into raw bytes.
     - Creates a new file object using PocketBase's filesystem API.
 4.  **Record Creation:** Inserts a new record into the `ai_agent_chat_history` collection:
-    - `mac_address`: From request.
-    - `agent`: From the identified device.
-    - `device`: From the identified device.
-    - `conversation_id`: Mapped from `sessionId`.
+    - `chat`: Mapped from `sessionId`.
     - `content`: From request.
     - `chat_type`: From request (as string).
     - `chat_audio`: The processed audio file (if provided).
@@ -59,4 +56,5 @@ Returns a standard success response.
 
 #### 5. Database Mapping
 - **`ai_device`**: Used to link `macAddress` to `agent_id`.
-- **`ai_agent_chat_history`**: Stores the chat history records and audio files.
+- **`ai_agent_chat`**: The parent collection that groups chat messages into a single conversation.
+- **`ai_agent_chat_history`**: Stores the individual chat messages and audio files.

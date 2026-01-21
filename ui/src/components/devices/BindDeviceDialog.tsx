@@ -67,12 +67,7 @@ export function BindDeviceDialog({ agentId, onSuccess }: BindDeviceDialogProps) 
 					</DialogDescription>
 				</DialogHeader>
 				<div className="flex justify-center py-4">
-					<InputOTP
-						maxLength={6}
-						value={code}
-						onChange={(value) => setCode(value)}
-						disabled={loading}
-					>
+					<InputOTP maxLength={6} value={code} onChange={(value) => setCode(value)} disabled={loading}>
 						<InputOTPGroup>
 							<InputOTPSlot index={0} />
 							<InputOTPSlot index={1} />

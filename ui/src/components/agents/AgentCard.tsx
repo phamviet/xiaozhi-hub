@@ -129,9 +129,7 @@ function DeviceListModal({ agent }: { agent: AIAgent }) {
 										<span className="font-medium">{dev.mac_address}</span>
 										<span className="text-xs text-muted-foreground">{dev.board}</span>
 									</div>
-									<div className="text-xs text-muted-foreground">
-										{new Date(dev.created).toLocaleDateString()}
-									</div>
+									<div className="text-xs text-muted-foreground">{new Date(dev.created).toLocaleDateString()}</div>
 								</div>
 							))}
 						</div>

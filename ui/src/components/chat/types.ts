@@ -1,17 +1,20 @@
 import type { RecordModel } from "pocketbase"
 
 export interface ChatMessage extends RecordModel {
-	agent: string
-	device: string
-	mac_address: string
-	conversation_id: string
+	id: string
+	chat: string // relation ID to ai_agent_chat
 	content: string
-	chat_type: "1" | "2" // 1: User, 2: Assistant
-	chat_audio: string // filename
+	chat_type: "1" | "2" // "1" for User, "2" for Assistant
+	chat_audio?: string // file name
+	created: string
+	updated: string
 }
 
-export interface Conversation {
-	id: string
-	messages: ChatMessage[]
-	lastMessageTime: string
+export interface AIAgentChat extends RecordModel {
+	id: string // UUID
+	agent: string // relation ID to ai_agent
+	summary?: string
+	ended?: string // date string
+	created: string
+	updated: string
 }
