@@ -1516,6 +1516,19 @@ func init() {
 						"presentable": false,
 						"system": false,
 						"type": "autodate"
+					},
+					{
+						"cascadeDelete": false,
+						"collectionId": "pbc_2153001328",
+						"hidden": false,
+						"id": "relation154121870",
+						"maxSelect": 1,
+						"minSelect": 0,
+						"name": "device",
+						"presentable": false,
+						"required": false,
+						"system": false,
+						"type": "relation"
 					}
 				],
 				"id": "pbc_333196930",

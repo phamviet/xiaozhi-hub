@@ -28,7 +28,6 @@ func NewHub(app core.App, plugins []Plugin) *Hub {
 
 func (h *Hub) StartHub() error {
 	for _, p := range h.plugins {
-		h.App.Logger().Info("Registering plugin...", "name", p.Name())
 		if err := p.Initialize(h); err != nil {
 			return err
 		}
