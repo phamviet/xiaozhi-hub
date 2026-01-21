@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { pb } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -10,13 +10,6 @@ import { AudioPlayer } from "./AudioPlayer"
 import type { AIAgentChat, ChatMessage } from "@/components/chat/types.ts"
 
 interface Conversation extends AIAgentChat {
-	messages: ChatMessage[]
-}
-
-export interface ExpandedChatMessage extends ChatMessage {
-	expand?: {
-		chat: Conversation
-	}
 }
 
 interface ChatHistoryDialogProps {
@@ -26,51 +19,67 @@ interface ChatHistoryDialogProps {
 export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 	const [open, setOpen] = useState(false)
 	const [conversations, setConversations] = useState<Conversation[]>([])
-	const [loading, setLoading] = useState(false)
+	const [loadingConversations, setLoadingConversations] = useState(false) // Renamed from 'loading'
 	const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+	const [selectedConversationMessages, setSelectedConversationMessages] = useState<ChatMessage[]>([])
+	const [loadingMessages, setLoadingMessages] = useState(false)
 
-	useEffect(() => {
-		if (open) {
-			fetchHistory()
-		}
-	}, [open])
-
-	const fetchHistory = async () => {
-		setLoading(true)
+	const fetchHistory = useCallback(async () => {
+		setLoadingConversations(true)
 		try {
 			// Fetch ai_agent_chat records for the current agent
-			// Expand 'ai_agent_chat_history(chat)' to get all messages for each chat
-			// Sort by created date descending for the chat sessions
 			const chatRecords = await pb.collection("ai_agent_chat").getList<AIAgentChat>(1, 500, {
 				filter: `agent = "${agent.id}"`,
 				sort: "-created",
-				expand: "ai_agent_chat_history(chat)", // This expands the related messages
 			})
 
-			const fetchedConversations: Conversation[] = chatRecords.items.map((chat) => {
-				const messages = (chat.expand?.["ai_agent_chat_history(chat)"] || []) as ExpandedChatMessage[]
-				// Sort messages within a conversation by created time ascending
-				messages.sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime())
-				return {
-					...chat,
-					messages: messages,
-				}
-			})
-
-			setConversations(fetchedConversations)
+			setConversations(chatRecords.items)
 
 			// Select the first conversation by default if none is selected
-			if (!selectedConversationId && fetchedConversations.length > 0) {
-				setSelectedConversationId(fetchedConversations[0].id)
+			if (!selectedConversationId && chatRecords.items.length > 0) {
+				setSelectedConversationId(chatRecords.items[0].id)
 			}
 		} catch (err) {
 			console.error("Error fetching chat history:", err)
 		} finally {
-			setLoading(false)
+			setLoadingConversations(false)
 		}
-	}
+	}, [agent.id, selectedConversationId]) // Added selectedConversationId to dependencies
 
-	const selectedConversation = conversations.find((c) => c.id === selectedConversationId)
+	const fetchConversationMessages = useCallback(async (conversationId: string) => {
+		setLoadingMessages(true)
+		setSelectedConversationMessages([]) // Clear previous messages
+		try {
+			// Fetch messages for the selected conversation
+			const messagesRecords = await pb.collection("ai_agent_chat_history").getList<ChatMessage>(1, 500, {
+				filter: `chat = "${conversationId}"`,
+				sort: "created", // Sort messages within a conversation by created time ascending
+			})
+			setSelectedConversationMessages(messagesRecords.items)
+		} catch (err) {
+			console.error(`Error fetching messages for conversation ${conversationId}:`, err)
+		} finally {
+			setLoadingMessages(false)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (open) {
+			fetchHistory()
+		} else {
+			// Reset states when dialog closes
+			setConversations([])
+			setSelectedConversationId(null)
+			setSelectedConversationMessages([])
+		}
+	}, [open, fetchHistory])
+
+	useEffect(() => {
+		if (selectedConversationId) {
+			fetchConversationMessages(selectedConversationId)
+		}
+	}, [selectedConversationId, fetchConversationMessages])
+
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -88,7 +97,7 @@ export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 				<div className="flex flex-1 overflow-hidden border-t mt-2">
 					{/* Left Sidebar: Conversation List */}
 					<div className="w-1/3 border-r overflow-y-auto bg-muted/10">
-						{loading && conversations.length === 0 ? (
+						{loadingConversations && conversations.length === 0 ? (
 							<div className="flex justify-center p-4">
 								<Spinner className="size-6 text-muted-foreground" />
 							</div>
@@ -109,9 +118,10 @@ export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 											{new Date(conv.ended || conv.created).toLocaleString()}
 										</span>
 										<span className="text-xs text-muted-foreground truncate w-full mt-1">
-											{conv.summary || conv.messages[0]?.content || "No summary"}
+											{conv.summary || "No summary"}
 										</span>
-										<span className="text-[10px] text-muted-foreground mt-1">{conv.messages.length} messages</span>
+										{/* Removed conv.messages.length as messages are not loaded initially */}
+										{/* <span className="text-[10px] text-muted-foreground mt-1">{conv.messages.length} messages</span> */}
 									</button>
 								))}
 							</div>
@@ -120,9 +130,13 @@ export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 
 					{/* Right Content: Chat Messages */}
 					<div className="flex-1 flex flex-col overflow-hidden bg-background">
-						{selectedConversation ? (
+						{loadingMessages ? (
+							<div className="flex-1 flex items-center justify-center">
+								<Spinner className="size-6 text-muted-foreground" />
+							</div>
+						) : selectedConversationId && selectedConversationMessages.length > 0 ? (
 							<div className="flex-1 overflow-y-auto p-4 space-y-4">
-								{selectedConversation.messages.map((msg) => (
+								{selectedConversationMessages.map((msg) => (
 									<div
 										key={msg.id}
 										className={cn("flex gap-3 max-w-[80%]", msg.chat_type === "1" ? "ml-auto flex-row-reverse" : "")}
@@ -153,6 +167,10 @@ export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 										</div>
 									</div>
 								))}
+							</div>
+						) : selectedConversationId && !loadingMessages && selectedConversationMessages.length === 0 ? (
+							<div className="flex-1 flex items-center justify-center text-muted-foreground">
+								No messages found for this conversation.
 							</div>
 						) : (
 							<div className="flex-1 flex items-center justify-center text-muted-foreground">
