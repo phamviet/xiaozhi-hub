@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/pocketbase/dbx"
+	"github.com/pocketbase/pocketbase/core"
 )
 
 func (m *Manager) getAgentByID(id string) (*AIAgent, error) {
@@ -15,6 +16,37 @@ func (m *Manager) getAgentByID(id string) (*AIAgent, error) {
 	}
 
 	return &agent, nil
+}
+
+func (m *Manager) loadChatSession(sessionID, agentID string) (*ChatSession, error) {
+	collection, err := m.App.FindCollectionByNameOrId("ai_agent_chat")
+	if err != nil {
+		return nil, err
+	}
+
+	var session ChatSession
+	err = m.App.RecordQuery("ai_agent_chat").Where(dbx.NewExp("id = {:id}", dbx.Params{"id": sessionID})).One(&session)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) && agentID != "" {
+			// Create a new session
+			record := core.NewRecord(collection)
+			record.Set("id", sessionID)
+			record.Set("agent", agentID)
+
+			if err = m.App.Save(record); err != nil {
+				return nil, err
+			}
+
+			return &ChatSession{
+				ID:      sessionID,
+				AgentID: agentID,
+			}, nil
+		}
+
+		return nil, err
+	}
+
+	return &session, nil
 }
 
 func (m *Manager) getDeviceByMacAddress(mac string) (*Device, error) {

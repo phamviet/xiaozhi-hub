@@ -1,5 +1,6 @@
 # Generate schema snapshot
-snapshot: go run . migrate collections
+snapshot:
+	go run . migrate collections
 build-ui:
 	bun install --cwd ./ui
 	bun run --cwd ./ui build

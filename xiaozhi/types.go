@@ -22,6 +22,26 @@ type AIAgent struct {
 	IntentModelID      string `db:"intent_model_id"`
 	ChatHistoryEnabled bool   `db:"chat_history_enabled"`
 }
+type ChatType string
+
+const TypeUser ChatType = "1"
+const ChatTypeAssistant ChatType = "2"
+
+type ChatMessage struct {
+	ID        string   `db:"id"`
+	SessionID string   `db:"chat"`
+	Content   string   `db:"content"`
+	ChatType  ChatType `db:"chat_type"`
+}
+
+type ChatSession struct {
+	ID       string         `db:"id"`
+	AgentID  string         `db:"agent"`
+	Summary  string         `db:"summary"`
+	Created  types.DateTime `db:"created"`
+	Ended    types.DateTime `db:"ended"`
+	Messages []ChatMessage
+}
 
 type Device struct {
 	ID            string         `db:"id"`

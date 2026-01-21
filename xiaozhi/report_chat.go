@@ -35,16 +35,22 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Device not found"})
 	}
 
+	if device.AgentID == "" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "unbound device"})
+	}
+
+	chat, err := m.loadChatSession(req.SessionId, device.AgentID)
+	if err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	collection, err := e.App.FindCollectionByNameOrId("ai_agent_chat_history")
 	if err != nil {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "ai_agent_chat_history collection not found"})
 	}
 
 	record := core.NewRecord(collection)
-	record.Set("agent", device.AgentID)
-	record.Set("device", device.ID)
-	record.Set("mac_address", req.MacAddress)
-	record.Set("conversation_id", req.SessionId)
+	record.Set("chat", chat.ID)
 	record.Set("content", req.Content)
 	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // summaryChat /xiaozhi/agent/chat-summary/{sessionId}/save
@@ -17,17 +16,17 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "sessionId is required"})
 	}
 
-	// 1. Find the agent from sessionId (by looking up chat history)
-	var chatHistory []struct {
-		AgentID  string         `db:"agent"`
-		Content  string         `db:"content"`
-		ChatType string         `db:"chat_type"`
-		Created  types.DateTime `db:"created"`
+	// 1. Find chat session
+	chat, err := m.loadChatSession(sessionId, "")
+	if err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Chat session not found"})
 	}
 
-	err := e.App.DB().Select("agent", "content", "chat_type").
+	// 2. Find chat history
+	var chatHistory []ChatMessage
+	err = e.App.DB().Select("*").
 		From("ai_agent_chat_history").
-		Where(dbx.HashExp{"conversation_id": sessionId}).
+		Where(dbx.HashExp{"chat": chat.ID}).
 		OrderBy("created ASC").
 		All(&chatHistory)
 
@@ -37,26 +36,20 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	}
 
 	if len(chatHistory) == 0 {
-		return e.JSON(http.StatusNotFound, map[string]string{"error": "Chat history not found"})
+		return e.JSON(http.StatusOK, successResponse(true))
 	}
 
-	agentID := chatHistory[0].AgentID
-	agent, err := m.getAgentByID(agentID)
+	agent, err := m.getAgentByID(chat.AgentID)
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
 	}
 
-	// 2. Take action if chat_history_enabled is true
+	// 3. Take action if chat_history_enabled is true
 	if !agent.ChatHistoryEnabled {
-		return e.JSON(http.StatusOK, successResponse("Chat history disabled for this agent"))
+		return e.JSON(http.StatusOK, successResponse("Agent chat history is disabled"))
 	}
 
-	// 3. Look at mem_model_id
-	//if agent.MemModelID == "" {
-	//	return e.JSON(http.StatusOK, successResponse("No memory model configured"))
-	//}
-
-	// 4. Fetch memory model config. If mem_model_id is empty, using the default Memory model
+	// 4. Fetch memory model config. If mem_model_id is empty, use a system default Memory model
 	modelConfig, err := m.getModelConfigByIDOrDefault(agent.MemModelID, "Memory")
 	if err != nil {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get memory model config"})
@@ -103,7 +96,7 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	// 6. Build conversation text
 	var convBuilder strings.Builder
 	for _, msg := range chatHistory {
-		if msg.ChatType == "2" { // 1 is User, 2 is Assistant
+		if msg.ChatType == ChatTypeAssistant { // 1 is User, 2 is Assistant
 			content := msg.Content
 			if len(content) > 250 {
 				prefix := content[:100]
