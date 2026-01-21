@@ -51,6 +51,7 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 
 	record := core.NewRecord(collection)
 	record.Set("chat", chat.ID)
+	record.Set("device", device.ID)
 	record.Set("content", req.Content)
 	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
 
