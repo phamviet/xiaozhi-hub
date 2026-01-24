@@ -3,7 +3,7 @@ import type { RecordModel } from "pocketbase"
 export interface AIAgent extends RecordModel {
 	user: string
 	agent_name: string
-	system_prompt: string
+	role_prompt: string
 	lang_code: string
 	asr_model_id: string
 	vad_model_id: string

@@ -22,7 +22,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 			</div>
 			<div className="p-6 pt-0">
 				<p className="text-sm text-muted-foreground line-clamp-3">
-					{agent.system_prompt || "No system prompt configured."}
+					{agent.role_prompt || "No role prompt configured."}
 				</p>
 			</div>
 			<div className="flex flex-wrap items-center p-6 pt-0 gap-2">
@@ -40,7 +40,7 @@ function ConfigureModal({ agent }: { agent: AIAgent }) {
 			<DialogTrigger asChild>
 				<Button variant="outline" size="sm">
 					<Settings className="h-4 w-4" />
-					Configure
+					Configure Role
 				</Button>
 			</DialogTrigger>
 			<DialogContent>

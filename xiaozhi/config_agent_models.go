@@ -16,7 +16,7 @@ type ClientRequest struct {
 
 type ModelsConfigResponse struct {
 	ModelConfigMap      map[string]map[string]*ModelConfigJson `json:"-"`
-	SystemPrompt        string                                 `json:"prompt"`
+	RolePrompt          string                                 `json:"prompt"`
 	SummaryMemory       string                                 `json:"summaryMemory"`
 	SelectedModule      map[string]string                      `json:"selected_module"`
 	ChatHistoryConf     int                                    `json:"chat_history_conf"`
@@ -74,14 +74,14 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 
 	response := &ModelsConfigResponse{
 		ModelConfigMap:      make(map[string]map[string]*ModelConfigJson),
-		SystemPrompt:        agent.SystemPrompt,
+		RolePrompt:          agent.RolePrompt,
 		SummaryMemory:       agent.SummaryMemory,
 		ChatHistoryConf:     0, // disable by default
 		DeviceMaxOutputSize: "0",
 		Plugins:             make(map[string]string),
 	}
 
-	response.Plugins["get_weather"] = `{"api_key": "test", "api_host": "mj7p3y7naa.re.qweatherapi.com", "default_location": "广州"}`
+	response.Plugins["get_weather"] = `{"api_key": "test", "api_host": "mj7p3y7naa.re.qweatherapi.com", "default_location": "Tay Ninh"}`
 	response.Plugins["play_music"] = `{}`
 
 	if agent.ChatHistoryEnabled {

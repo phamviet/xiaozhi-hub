@@ -10,7 +10,7 @@ type AIAgent struct {
 	ID                 string `db:"id"`
 	UserID             string `db:"user"`
 	Name               string `db:"agent_name"`
-	SystemPrompt       string `db:"system_prompt"`
+	RolePrompt         string `db:"role_prompt"`
 	SummaryMemory      string `db:"summary_memory"`
 	LangCode           string `db:"lang_code"`
 	ASRModelID         string `db:"asr_model_id"`
