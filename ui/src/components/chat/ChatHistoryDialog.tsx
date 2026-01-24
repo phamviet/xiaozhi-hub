@@ -9,8 +9,7 @@ import type { AIAgent } from "@/components/agents/types"
 import { AudioPlayer } from "./AudioPlayer"
 import type { AIAgentChat, ChatMessage } from "@/components/chat/types.ts"
 
-interface Conversation extends AIAgentChat {
-}
+interface Conversation extends AIAgentChat {}
 
 interface ChatHistoryDialogProps {
 	agent: AIAgent
@@ -79,7 +78,6 @@ export function ChatHistoryDialog({ agent }: ChatHistoryDialogProps) {
 			fetchConversationMessages(selectedConversationId)
 		}
 	}, [selectedConversationId, fetchConversationMessages])
-
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>

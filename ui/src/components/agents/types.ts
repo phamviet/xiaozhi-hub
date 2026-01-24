@@ -15,6 +15,15 @@ export interface AIAgent extends RecordModel {
 	chat_history_enabled: boolean
 }
 
+export interface ModelConfig extends RecordModel {
+	model_name: string
+	model_type: string
+	is_default: boolean
+	is_enabled: boolean
+	config_json: Record<string, any>
+	provider_id: string
+}
+
 export interface AIDevice extends RecordModel {
 	mac_address: string
 	user: string

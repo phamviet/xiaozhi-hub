@@ -25,6 +25,21 @@ export function AgentList() {
 		}
 
 		fetchAgents()
+
+		// Subscribe to realtime updates
+		pb.collection("ai_agent").subscribe<AIAgent>("*", (e) => {
+			if (e.action === "create") {
+				setAgents((prev) => [e.record, ...prev])
+			} else if (e.action === "update") {
+				setAgents((prev) => prev.map((agent) => (agent.id === e.record.id ? e.record : agent)))
+			} else if (e.action === "delete") {
+				setAgents((prev) => prev.filter((agent) => agent.id !== e.record.id))
+			}
+		})
+
+		return () => {
+			pb.collection("ai_agent").unsubscribe("*")
+		}
 	}, [])
 
 	if (loading) {

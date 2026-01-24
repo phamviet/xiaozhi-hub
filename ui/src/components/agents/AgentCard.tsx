@@ -4,10 +4,11 @@ import { pb } from "@/lib/api"
 import type { AIAgent, AIDevice } from "./types"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Settings, Smartphone } from "lucide-react"
+import { Smartphone } from "lucide-react"
 import { BindDeviceDialog } from "@/components/devices/BindDeviceDialog"
 import { ChatHistoryDialog } from "@/components/chat/ChatHistoryDialog"
 import { Spinner } from "@/components/ui/spinner"
+import ConfigureDialog from "@/components/agents/ConfigureDialog.tsx"
 
 interface AgentCardProps {
 	agent: AIAgent
@@ -26,32 +27,11 @@ export function AgentCard({ agent }: AgentCardProps) {
 				</p>
 			</div>
 			<div className="flex flex-wrap items-center p-6 pt-0 gap-2">
-				<ConfigureModal agent={agent} />
+				<ConfigureDialog agent={agent} />
 				<DeviceListModal agent={agent} />
 				<ChatHistoryDialog agent={agent} />
 			</div>
 		</div>
-	)
-}
-
-function ConfigureModal({ agent }: { agent: AIAgent }) {
-	return (
-		<Dialog>
-			<DialogTrigger asChild>
-				<Button variant="outline" size="sm">
-					<Settings className="h-4 w-4" />
-					Configure Role
-				</Button>
-			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Configure {agent.agent_name}</DialogTitle>
-				</DialogHeader>
-				<div className="py-4">
-					<p className="text-muted-foreground">Configuration options for models will appear here.</p>
-				</div>
-			</DialogContent>
-		</Dialog>
 	)
 }
 
