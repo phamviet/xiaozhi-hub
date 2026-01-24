@@ -2,6 +2,7 @@ package xiaozhi
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,6 +18,12 @@ type ReportChatRequest struct {
 	MacAddress  string `json:"macAddress"`
 	ReportTime  int64  `json:"reportTime"`
 	SessionId   string `json:"sessionId"`
+}
+
+type ChatContent struct {
+	Content  string `json:"content"`
+	Language string `json:"language"`
+	Speaker  string `json:"speaker"`
 }
 
 // reportChat /xiaozhi/agent/chat-history/report
@@ -49,10 +56,18 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "ai_agent_chat_history collection not found"})
 	}
 
+	content := req.Content
+	if len(content) > 0 && content[0] == '{' {
+		var parsedContent ChatContent
+		if err := json.Unmarshal([]byte(content), &parsedContent); err == nil {
+			content = parsedContent.Content
+		}
+	}
+
 	record := core.NewRecord(collection)
 	record.Set("chat", chat.ID)
 	record.Set("device", device.ID)
-	record.Set("content", req.Content)
+	record.Set("content", content)
 	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
 
 	if req.AudioBase64 != "" {
