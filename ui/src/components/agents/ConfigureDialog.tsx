@@ -50,7 +50,7 @@ function ConfigureDialog({ agent }: { agent: AIAgent }) {
 							id="role_prompt"
 							value={rolePrompt}
 							onChange={(e) => setRolePrompt(e.target.value)}
-							placeholder="Enter the system prompt for this agent..."
+							placeholder="Enter role prompt for this agent..."
 							className="min-h-100"
 						/>
 					</div>
