@@ -1,4 +1,4 @@
-package xiaozhi
+package types
 
 import (
 	"encoding/json"
@@ -41,16 +41,6 @@ type ChatSession struct {
 	Created  types.DateTime `db:"created"`
 	Ended    types.DateTime `db:"ended"`
 	Messages []ChatMessage
-}
-
-type Device struct {
-	ID            string         `db:"id"`
-	MacAddress    string         `db:"mac_address"`
-	UserID        string         `db:"user"`
-	AgentID       string         `db:"agent"`
-	Board         string         `db:"board"`
-	LastConnected types.DateTime `db:"last_connected"`
-	Created       types.DateTime `db:"created"`
 }
 
 type ModelConfig struct {
@@ -97,7 +87,7 @@ func (c *ModelConfigJson) MarshalJSON() ([]byte, error) {
 	return json.Marshal(flat)
 }
 
-func (c *ModelConfigJson) isLLMReference() bool {
+func (c *ModelConfigJson) IsLLMReference() bool {
 	_, isLLM := c.Param["llm"]
 
 	return isLLM

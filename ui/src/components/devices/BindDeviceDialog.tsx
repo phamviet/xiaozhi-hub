@@ -32,7 +32,7 @@ export function BindDeviceDialog({ agentId, onSuccess }: BindDeviceDialogProps) 
 
 		setLoading(true)
 		try {
-			await pb.send("/hub/api/device/bind", {
+			await pb.send("/xiaozhi/ota/bind-device", {
 				method: "POST",
 				body: {
 					code,

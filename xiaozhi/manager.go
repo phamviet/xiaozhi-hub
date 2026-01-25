@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/phamviet/xiaozhi-hub/internal/hub"
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/store"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -12,6 +13,7 @@ var _ hub.Plugin = (*Manager)(nil)
 
 type Manager struct {
 	App            core.App
+	Store          *store.Manager
 	BindingManager *DeviceBindingManager
 }
 
@@ -28,6 +30,7 @@ func (m *Manager) Name() string {
 func (m *Manager) Initialize(hub *hub.Hub) error {
 	m.App = hub.App
 	hub.App.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		m.Store = store.NewManager(hub.App)
 		if err := m.registerAuthRoutes(e); err != nil {
 			return err
 		}
@@ -42,9 +45,12 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 	hubAPI := se.Router.Group("/hub/api")
 	xiaozhi := se.Router.Group("/xiaozhi")
 	xiaozhi.POST("/ota", m.otaRequest)
+	xiaozhi.POST("/ota/activate", m.otaActivateRequest)
+	xiaozhi.POST("/ota/bind-device", m.otaBindDeviceRequest)
 
 	// Ensure ending slash is supported
 	xiaozhi.POST("/ota/", m.otaRequest)
+	xiaozhi.POST("/ota/activate/", m.otaActivateRequest)
 
 	// Auth with manager secret
 	apiAuth := xiaozhi.Group("")

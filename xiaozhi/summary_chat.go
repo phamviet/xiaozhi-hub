@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -73,8 +74,8 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, successResponse(true))
 }
 
-func (m *Manager) fetchChatHistory(chatID string) ([]ChatMessage, error) {
-	var chatHistory []ChatMessage
+func (m *Manager) fetchChatHistory(chatID string) ([]types.ChatMessage, error) {
+	var chatHistory []types.ChatMessage
 	err := m.App.DB().Select("*").
 		From("ai_agent_chat_history").
 		Where(dbx.HashExp{"chat": chatID}).
@@ -83,7 +84,7 @@ func (m *Manager) fetchChatHistory(chatID string) ([]ChatMessage, error) {
 	return chatHistory, err
 }
 
-func (m *Manager) resolveMemoryLLMConfig(agent *AIAgent) (*ModelConfigJson, error) {
+func (m *Manager) resolveMemoryLLMConfig(agent *types.AIAgent) (*types.ModelConfigJson, error) {
 	modelConfig, err := m.getModelConfigByIDOrDefault(agent.MemModelID, "Memory")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get memory model config: %w", err)
@@ -97,7 +98,7 @@ func (m *Manager) resolveMemoryLLMConfig(agent *AIAgent) (*ModelConfigJson, erro
 	modelConfigJson := modelConfig.ToModelConfigJson(providerRecord.GetString("provider_code"))
 	m.resolveSecretReference(m.App, modelConfigJson)
 
-	if modelConfigJson.isLLMReference() {
+	if modelConfigJson.IsLLMReference() {
 		llmID := modelConfigJson.Param["llm"]
 		llmConfig, err := m.getModelConfigByIDOrDefault(llmID, "LLM")
 		if err != nil {
@@ -115,7 +116,7 @@ func (m *Manager) resolveMemoryLLMConfig(agent *AIAgent) (*ModelConfigJson, erro
 	return modelConfigJson, nil
 }
 
-func (m *Manager) generateSessionSummary(llmConfig *ModelConfigJson, chatHistory []ChatMessage) (string, error) {
+func (m *Manager) generateSessionSummary(llmConfig *types.ModelConfigJson, chatHistory []types.ChatMessage) (string, error) {
 	sysPrompt := "You are a helpful assistant. Summarize the following conversation in a concise manner in no more than two sentences. Response must in user's language."
 
 	convText := m.formatConversation(chatHistory)
@@ -140,7 +141,7 @@ CONVERSATION LOG:
 	return llmClient.Chat(messages)
 }
 
-func (m *Manager) generateAgentMemory(llmConfig *ModelConfigJson, existingMemory string, sessionSummary string) (string, error) {
+func (m *Manager) generateAgentMemory(llmConfig *types.ModelConfigJson, existingMemory string, sessionSummary string) (string, error) {
 	sysPrompt := "Please update the long-term memory based on the new session summary."
 	promptParam, err := m.App.FindFirstRecordByData("sys_params", "name", "memory.system_prompt")
 	if err == nil {
@@ -174,11 +175,11 @@ NEW SESSION SUMMARY:
 	return llmClient.Chat(messages)
 }
 
-func (m *Manager) formatConversation(chatHistory []ChatMessage) string {
+func (m *Manager) formatConversation(chatHistory []types.ChatMessage) string {
 	var convBuilder strings.Builder
 	for _, msg := range chatHistory {
 		role := "User"
-		if msg.ChatType == ChatTypeAssistant {
+		if msg.ChatType == types.ChatTypeAssistant {
 			role = "Assistant"
 		}
 

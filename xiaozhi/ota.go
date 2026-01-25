@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -46,6 +47,31 @@ type OTAResponse struct {
 		URL   string `json:"url"`
 		Token string `json:"token"`
 	} `json:"websocket"`
+	Activation struct {
+		Code      string `json:"code,omitempty"`
+		Challenge string `json:"challenge,omitempty"`
+		Message   string `json:"message,omitempty"`
+	} `json:"activation,omitempty"`
+}
+
+type ActivationRequest struct {
+	Payload struct {
+		Algorithm    string `json:"algorithm"`
+		SerialNumber string `json:"serial_number"`
+		Challenge    string `json:"challenge"`
+		HMAC         string `json:"hmac"`
+	} `json:"Payload"`
+}
+
+type ActivationResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+}
+
+type DeviceBindResponse struct {
+	Code    int                    `json:"code"`
+	Message string                 `json:"msg"`
+	Data    map[string]interface{} `json:"data,omitempty"`
 }
 
 // otaRequest /xiaozhi/ota
@@ -72,8 +98,29 @@ func (m *Manager) otaRequest(e *core.RequestEvent) error {
 
 	var req OTARequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
-		e.App.Logger().Warn("Failed to unmarshal ota request", "body", bodyString, "error", err)
-		return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ota request"})
+		e.App.Logger().Warn("unmarshal ota request", "body", bodyString, "error", err)
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	}
+
+	e.App.Logger().Info("ota request body", "body", bodyString, "deviceId", deviceID)
+	device, err := m.Store.GetDeviceByMacAddress(deviceID)
+	var bindCode, challenge string
+	if err != nil {
+		bindInfo, err := m.Store.CreateUnboundDevice(deviceID)
+		if err != nil || bindInfo == nil {
+			e.App.Logger().Error("Error", "err", err, "bindInfo", bindInfo)
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		}
+		bindCode = bindInfo.BindCode
+		challenge = bindInfo.Challenge
+	} else {
+		// If device exists but is not bound (no user_id), we might want to return the bind code again
+		// But for now let's assume we only return it for new devices or if we want to re-bind.
+		// Checking if device is bound:
+		if device.UserId == "" {
+			bindCode = device.BindCode
+			challenge = device.Challenge
+		}
 	}
 
 	// Store request body to ota_requests collection
@@ -138,5 +185,159 @@ func (m *Manager) otaRequest(e *core.RequestEvent) error {
 	response.Websocket.URL = wsURL
 	response.Websocket.Token = tokenString
 
+	if bindCode != "" {
+		response.Activation.Code = bindCode
+		response.Activation.Challenge = challenge
+		response.Activation.Message = "Device not bound. Please enter the code to bind."
+	}
+
 	return e.JSON(http.StatusOK, response)
+}
+
+// otaActivateRequest /xiaozhi/ota/activate
+func (m *Manager) otaActivateRequest(e *core.RequestEvent) error {
+	macAddress := e.Request.Header.Get("device-id")
+	if macAddress == "" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "device-id header is required"})
+	}
+
+	// Validate MAC address format
+	macRegex := regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+	if !macRegex.MatchString(macAddress) {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid device-id format"})
+	}
+
+	// Read request body
+	bodyBytes, err := io.ReadAll(e.Request.Body)
+	if err != nil {
+		return err
+	}
+
+	e.App.Logger().Info("request", "body", string(bodyBytes))
+	var req ActivationRequest
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	}
+
+	// Validate required fields
+	if req.Payload.Algorithm != "hmac-sha256" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "unsupported algorithm"})
+	}
+
+	if req.Payload.Challenge == "" || req.Payload.HMAC == "" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "missing required fields"})
+	}
+
+	// Get device by MAC address
+	device, err := m.Store.GetDeviceByMacAddress(macAddress)
+	if err != nil {
+		return e.JSON(http.StatusNotFound, map[string]string{"error": "device not found"})
+	}
+
+	// Verify challenge matches the one stored for this device
+	if device.Challenge != req.Payload.Challenge {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid challenge"})
+	}
+
+	// Skip HMAC validation if hmac_key is empty
+	if device.HmacKey != "" {
+		// Calculate expected HMAC using device's hmac_key
+		h := hmac.New(sha256.New, []byte(device.HmacKey))
+		h.Write([]byte(req.Payload.Challenge))
+		expectedMAC := h.Sum(nil)
+		expectedMACHex := fmt.Sprintf("%x", expectedMAC)
+
+		// Compare HMACs (timing-safe comparison would be better for production)
+		if !hmac.Equal([]byte(req.Payload.HMAC), []byte(expectedMACHex)) {
+			return e.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid hmac"})
+		}
+	}
+
+	if device.Status != types.DeviceCodeVerified {
+		return e.JSON(http.StatusBadRequest, map[string]string{"message": "Waiting for device code submission"})
+	}
+
+	// Update device activation status
+	if err := m.Store.ActivateDevice(device.Id, req.Payload.SerialNumber); err != nil {
+		e.App.Logger().Error("Failed to activate device", "error", err)
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to activate device"})
+	}
+
+	return e.JSON(http.StatusOK, ActivationResponse{
+		Success: true,
+		Message: "Device activated successfully",
+	})
+}
+
+// otaBindDeviceRequest /xiaozhi/ota/bind-device
+func (m *Manager) otaBindDeviceRequest(e *core.RequestEvent) error {
+	authRecord := e.Auth
+	if authRecord == nil {
+		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Authentication required"})
+	}
+
+	var req DeviceBindRequest
+	if err := e.BindBody(&req); err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	if req.Code == "" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "code is required"})
+	}
+
+	// Find pending device by bind code in database
+	device, err := m.Store.GetDeviceByBindCode(req.Code)
+	if err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired device code"})
+	}
+
+	// Check if device is already bound
+	if device.UserId != "" {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Device already bound"})
+	}
+
+	var agentUserID string
+	var agentID string
+
+	if req.AgentID != "" {
+		// Use existing agent
+		agent, err := m.getAgentByID(req.AgentID)
+		if err != nil {
+			return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
+		}
+		agentUserID = agent.UserID
+		agentID = req.AgentID
+	} else {
+		// Create new agent with device board name
+		agentName := device.Board
+		if agentName == "" {
+			agentName = req.Code
+		}
+
+		agent, err := m.createNewAgent(authRecord.Id, agentName)
+		if err != nil {
+			e.App.Logger().Error("Failed to create new agent", "error", err, "userId", authRecord.Id, "agentName", agentName)
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create new agent"})
+		}
+
+		agentUserID = authRecord.Id
+		agentID = agent.ID
+	}
+
+	record, err := e.App.FindFirstRecordByData("ai_device", "mac_address", device.MacAddress)
+	if err != nil {
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "device record not found"})
+	}
+
+	record.Set("agent", agentID)
+	record.Set("user", agentUserID)
+	record.Set("bind_code", "")
+	record.Set("status", types.DeviceCodeVerified)
+
+	if err := e.App.Save(record); err != nil {
+		e.App.Logger().Error("Failed to save device binding", "error", err, "mac", device.MacAddress)
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save device binding"})
+	}
+
+	return e.JSON(http.StatusOK, successResponse(true))
 }

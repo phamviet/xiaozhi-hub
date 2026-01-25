@@ -899,6 +899,77 @@ func init() {
 						"type": "json"
 					},
 					{
+						"autogeneratePattern": "",
+						"hidden": false,
+						"id": "text4291218294",
+						"max": 6,
+						"min": 6,
+						"name": "bind_code",
+						"pattern": "",
+						"presentable": false,
+						"primaryKey": false,
+						"required": false,
+						"system": false,
+						"type": "text"
+					},
+					{
+						"autogeneratePattern": "",
+						"hidden": false,
+						"id": "text3607726417",
+						"max": 256,
+						"min": 1,
+						"name": "challenge",
+						"pattern": "",
+						"presentable": false,
+						"primaryKey": false,
+						"required": false,
+						"system": false,
+						"type": "text"
+					},
+					{
+						"autogeneratePattern": "",
+						"hidden": false,
+						"id": "text2009658735",
+						"max": 64,
+						"min": 0,
+						"name": "hmac_key",
+						"pattern": "",
+						"presentable": false,
+						"primaryKey": false,
+						"required": false,
+						"system": false,
+						"type": "text"
+					},
+					{
+						"hidden": false,
+						"id": "select2063623452",
+						"maxSelect": 1,
+						"name": "status",
+						"presentable": false,
+						"required": false,
+						"system": false,
+						"type": "select",
+						"values": [
+							"unknown",
+							"code_verified",
+							"bound"
+						]
+					},
+					{
+						"autogeneratePattern": "",
+						"hidden": false,
+						"id": "text227839714",
+						"max": 0,
+						"min": 0,
+						"name": "serial_number",
+						"pattern": "",
+						"presentable": false,
+						"primaryKey": false,
+						"required": false,
+						"system": false,
+						"type": "text"
+					},
+					{
 						"hidden": false,
 						"id": "autodate2990389176",
 						"name": "created",
@@ -1251,7 +1322,7 @@ func init() {
 						"id": "text1919015417",
 						"max": 0,
 						"min": 0,
-						"name": "system_prompt",
+						"name": "role_prompt",
 						"pattern": "",
 						"presentable": false,
 						"primaryKey": false,
@@ -1395,6 +1466,19 @@ func init() {
 						"type": "bool"
 					},
 					{
+						"cascadeDelete": false,
+						"collectionId": "pbc_950808906",
+						"hidden": false,
+						"id": "relation407168695",
+						"maxSelect": 1,
+						"minSelect": 0,
+						"name": "server_id",
+						"presentable": false,
+						"required": false,
+						"system": false,
+						"type": "relation"
+					},
+					{
 						"hidden": false,
 						"id": "autodate2990389176",
 						"name": "created",
@@ -1487,8 +1571,12 @@ func init() {
 						"hidden": false,
 						"id": "file410859157",
 						"maxSelect": 1,
-						"maxSize": 0,
-						"mimeTypes": [],
+						"maxSize": 20971520,
+						"mimeTypes": [
+							"audio/wav",
+							"audio/mpeg",
+							"audio/flac"
+						],
 						"name": "chat_audio",
 						"presentable": false,
 						"protected": false,
@@ -2195,6 +2283,90 @@ func init() {
 				"type": "base",
 				"updateRule": null,
 				"viewRule": "agent.user = @request.auth.id"
+			},
+			{
+				"createRule": null,
+				"deleteRule": null,
+				"fields": [
+					{
+						"autogeneratePattern": "[a-z0-9]{15}",
+						"hidden": false,
+						"id": "text3208210256",
+						"max": 15,
+						"min": 15,
+						"name": "id",
+						"pattern": "^[a-z0-9]+$",
+						"presentable": false,
+						"primaryKey": true,
+						"required": true,
+						"system": true,
+						"type": "text"
+					},
+					{
+						"autogeneratePattern": "",
+						"hidden": false,
+						"id": "text1579384326",
+						"max": 0,
+						"min": 0,
+						"name": "name",
+						"pattern": "",
+						"presentable": true,
+						"primaryKey": false,
+						"required": false,
+						"system": false,
+						"type": "text"
+					},
+					{
+						"exceptDomains": null,
+						"hidden": false,
+						"id": "url4101391790",
+						"name": "url",
+						"onlyDomains": null,
+						"presentable": false,
+						"required": false,
+						"system": false,
+						"type": "url"
+					},
+					{
+						"hidden": false,
+						"id": "bool1358543748",
+						"name": "enabled",
+						"presentable": false,
+						"required": false,
+						"system": false,
+						"type": "bool"
+					},
+					{
+						"hidden": false,
+						"id": "autodate2990389176",
+						"name": "created",
+						"onCreate": true,
+						"onUpdate": false,
+						"presentable": false,
+						"system": false,
+						"type": "autodate"
+					},
+					{
+						"hidden": false,
+						"id": "autodate3332085495",
+						"name": "updated",
+						"onCreate": true,
+						"onUpdate": true,
+						"presentable": false,
+						"system": false,
+						"type": "autodate"
+					}
+				],
+				"id": "pbc_950808906",
+				"indexes": [
+					"CREATE INDEX ` + "`" + `idx_jZHvcOAyPN` + "`" + ` ON ` + "`" + `ai_server` + "`" + ` (` + "`" + `enabled` + "`" + `)"
+				],
+				"listRule": null,
+				"name": "ai_server",
+				"system": false,
+				"type": "base",
+				"updateRule": null,
+				"viewRule": null
 			}
 		]`
 

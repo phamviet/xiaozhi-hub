@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -15,13 +16,13 @@ type ClientRequest struct {
 }
 
 type ModelsConfigResponse struct {
-	ModelConfigMap      map[string]map[string]*ModelConfigJson `json:"-"`
-	RolePrompt          string                                 `json:"prompt"`
-	SummaryMemory       string                                 `json:"summaryMemory"`
-	SelectedModule      map[string]string                      `json:"selected_module"`
-	ChatHistoryConf     int                                    `json:"chat_history_conf"`
-	DeviceMaxOutputSize string                                 `json:"device_max_output_size"`
-	Plugins             map[string]string                      `json:"plugins"`
+	ModelConfigMap      map[string]map[string]*types.ModelConfigJson `json:"-"`
+	RolePrompt          string                                       `json:"prompt"`
+	SummaryMemory       string                                       `json:"summaryMemory"`
+	SelectedModule      map[string]string                            `json:"selected_module"`
+	ChatHistoryConf     int                                          `json:"chat_history_conf"`
+	DeviceMaxOutputSize string                                       `json:"device_max_output_size"`
+	Plugins             map[string]string                            `json:"plugins"`
 }
 
 func (r *ModelsConfigResponse) MarshalJSON() ([]byte, error) {
@@ -67,13 +68,13 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		})
 	}
 
-	agent, err := m.getAgentByID(device.AgentID)
+	agent, err := m.getAgentByID(device.AgentId)
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
 	}
 
 	response := &ModelsConfigResponse{
-		ModelConfigMap:      make(map[string]map[string]*ModelConfigJson),
+		ModelConfigMap:      make(map[string]map[string]*types.ModelConfigJson),
 		RolePrompt:          agent.RolePrompt,
 		SummaryMemory:       agent.SummaryMemory,
 		ChatHistoryConf:     0, // disable by default
@@ -88,7 +89,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		response.ChatHistoryConf = 2 // store voice & message
 	}
 
-	getModelConfigJson := func(id string, modelType string) (*ModelConfigJson, error) {
+	getModelConfigJson := func(id string, modelType string) (*types.ModelConfigJson, error) {
 		modelConfig, err := m.getModelConfigByIDOrDefault(id, modelType)
 		if err != nil {
 			return nil, err
@@ -121,12 +122,12 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		if modelConfig != nil {
 			m.resolveSecretReference(e.App, modelConfig)
 			selectedModule[modelType] = modelConfig.ID
-			if modelConfig.isLLMReference() {
+			if modelConfig.IsLLMReference() {
 				llmIDs = append(llmIDs, modelConfig.Param["llm"])
 			}
 
 			if response.ModelConfigMap[modelType] == nil {
-				response.ModelConfigMap[modelType] = make(map[string]*ModelConfigJson)
+				response.ModelConfigMap[modelType] = make(map[string]*types.ModelConfigJson)
 			}
 
 			response.ModelConfigMap[modelType][modelConfig.ID] = modelConfig
@@ -151,7 +152,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		if err == nil && modelConfig != nil {
 			m.resolveSecretReference(e.App, modelConfig)
 			if response.ModelConfigMap["LLM"] == nil {
-				response.ModelConfigMap["LLM"] = make(map[string]*ModelConfigJson)
+				response.ModelConfigMap["LLM"] = make(map[string]*types.ModelConfigJson)
 			}
 			response.ModelConfigMap["LLM"][modelConfig.ID] = modelConfig
 		}
@@ -162,7 +163,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, successResponse(response))
 }
 
-func (m *Manager) resolveSecretReference(app core.App, modelConfig *ModelConfigJson) {
+func (m *Manager) resolveSecretReference(app core.App, modelConfig *types.ModelConfigJson) {
 	credentialID, ok := modelConfig.Param["secret_ref"]
 	if !ok {
 		return

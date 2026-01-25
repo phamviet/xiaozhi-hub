@@ -42,11 +42,11 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Device not found"})
 	}
 
-	if device.AgentID == "" {
+	if device.AgentId == "" {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "unbound device"})
 	}
 
-	chat, err := m.loadChatSession(req.SessionId, device.AgentID)
+	chat, err := m.loadChatSession(req.SessionId, device.AgentId)
 	if err != nil {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -66,7 +66,7 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 
 	record := core.NewRecord(collection)
 	record.Set("chat", chat.ID)
-	record.Set("device", device.ID)
+	record.Set("device", device.Id)
 	record.Set("content", content)
 	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
 

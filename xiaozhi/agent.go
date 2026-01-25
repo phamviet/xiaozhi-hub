@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
-func (m *Manager) getAgentByID(id string) (*AIAgent, error) {
-	var agent AIAgent
+func (m *Manager) getAgentByID(id string) (*types.AIAgent, error) {
+	var agent types.AIAgent
 	err := m.App.RecordQuery("ai_agent").Where(dbx.NewExp("id = {:p}", dbx.Params{"p": id})).One(&agent)
 	if err != nil {
 		return nil, err
@@ -18,8 +19,35 @@ func (m *Manager) getAgentByID(id string) (*AIAgent, error) {
 	return &agent, nil
 }
 
-func (m *Manager) loadChatSession(sessionID, agentID string) (*ChatSession, error) {
-	var session ChatSession
+func (m *Manager) createNewAgent(userID, agentName string) (*types.AIAgent, error) {
+	collection, err := m.App.FindCollectionByNameOrId("ai_agent")
+	if err != nil {
+		return nil, err
+	}
+
+	record := core.NewRecord(collection)
+	record.Set("user", userID)
+	record.Set("agent_name", agentName)
+	record.Set("role_prompt", "You are a helpful AI assistant.")
+	record.Set("lang_code", "en")
+	record.Set("chat_history_enabled", true)
+
+	if err := m.App.Save(record); err != nil {
+		return nil, err
+	}
+
+	return &types.AIAgent{
+		ID:                 record.Id,
+		UserID:             userID,
+		Name:               agentName,
+		RolePrompt:         "You are a helpful AI assistant.",
+		LangCode:           "en",
+		ChatHistoryEnabled: true,
+	}, nil
+}
+
+func (m *Manager) loadChatSession(sessionID, agentID string) (*types.ChatSession, error) {
+	var session types.ChatSession
 	err := m.App.RecordQuery("ai_agent_chat").Where(dbx.NewExp("id = {:id}", dbx.Params{"id": sessionID})).One(&session)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) && agentID != "" {
@@ -37,7 +65,7 @@ func (m *Manager) loadChatSession(sessionID, agentID string) (*ChatSession, erro
 				return nil, err
 			}
 
-			return &ChatSession{
+			return &types.ChatSession{
 				ID:      sessionID,
 				AgentID: agentID,
 			}, nil
@@ -49,8 +77,8 @@ func (m *Manager) loadChatSession(sessionID, agentID string) (*ChatSession, erro
 	return &session, nil
 }
 
-func (m *Manager) getDeviceByMacAddress(mac string) (*Device, error) {
-	var row Device
+func (m *Manager) getDeviceByMacAddress(mac string) (*types.Device, error) {
+	var row types.Device
 	err := m.App.RecordQuery("ai_device").Where(dbx.NewExp("mac_address = {:p}", dbx.Params{"p": mac})).One(&row)
 	if err != nil {
 		return nil, err
@@ -59,12 +87,12 @@ func (m *Manager) getDeviceByMacAddress(mac string) (*Device, error) {
 	return &row, nil
 }
 
-func (m *Manager) getModelConfigByIDOrDefault(id string, modelType string) (*ModelConfig, error) {
+func (m *Manager) getModelConfigByIDOrDefault(id string, modelType string) (*types.ModelConfig, error) {
 	if id == "" {
 		return m.getDefaultModeConfig(modelType)
 	}
 
-	var row ModelConfig
+	var row types.ModelConfig
 	err := m.App.RecordQuery("model_config").
 		Where(dbx.NewExp("id = {:id}", dbx.Params{"id": id})).
 		One(&row)
@@ -85,8 +113,8 @@ func (m *Manager) getModelConfigByIDOrDefault(id string, modelType string) (*Mod
 	return m.getDefaultModeConfig(modelType)
 }
 
-func (m *Manager) getDefaultModeConfig(modelType string) (*ModelConfig, error) {
-	var row ModelConfig
+func (m *Manager) getDefaultModeConfig(modelType string) (*types.ModelConfig, error) {
+	var row types.ModelConfig
 	err := m.App.RecordQuery("model_config").
 		AndWhere(dbx.NewExp("model_type = {:t}", dbx.Params{"t": modelType})).
 		AndWhere(dbx.NewExp("is_enabled = {:b}", dbx.Params{"b": true})).

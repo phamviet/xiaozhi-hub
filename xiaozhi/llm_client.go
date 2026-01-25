@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 )
 
 type LLMMessage struct {
@@ -78,7 +80,7 @@ func (c *OpenAIClient) Chat(messages []LLMMessage) (string, error) {
 	return "", fmt.Errorf("no response from openai")
 }
 
-func (m *Manager) getLLMClient(modelConfig *ModelConfigJson) (LLMClient, error) {
+func (m *Manager) getLLMClient(modelConfig *types.ModelConfigJson) (LLMClient, error) {
 	switch modelConfig.Type {
 	case "openai":
 		return &OpenAIClient{

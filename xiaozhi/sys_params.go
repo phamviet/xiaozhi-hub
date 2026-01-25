@@ -1,11 +1,12 @@
 package xiaozhi
 
 import (
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
 	"github.com/pocketbase/dbx"
 )
 
 func (m *Manager) getSysParams(names ...string) (map[string]*string, error) {
-	var params []SysParam
+	var params []types.SysParam
 	interfaceSlice := make([]interface{}, len(names))
 	for i, v := range names {
 		interfaceSlice[i] = v
