@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.7-debian AS ui-builder
+FROM oven/bun:1.3.6-debian AS ui-builder
 
 WORKDIR /app/ui
 
