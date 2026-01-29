@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -17,12 +16,12 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "sessionId is required"})
 	}
 
-	chat, err := m.loadChatSession(sessionId, "")
+	chat, err := m.Store.LoadChatSession(sessionId, "")
 	if err != nil {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Chat session not found"})
 	}
 
-	chatHistory, err := m.fetchChatHistory(chat.ID)
+	chatHistory, err := m.Store.FetchChatHistory(chat.ID)
 	if err != nil {
 		e.App.Logger().Error("fetch chat history error", "error", err.Error())
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -32,7 +31,7 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusOK, successResponse("No chat history"))
 	}
 
-	agent, err := m.getAgentByID(chat.AgentID)
+	agent, err := m.Store.GetAgentByID(chat.AgentID)
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
 	}
@@ -54,7 +53,7 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	}
 
 	// 2. Update the chat session record with the summary
-	if err := m.updateChatSessionSummary(chat.ID, sessionSummary); err != nil {
+	if err := m.Store.UpdateChatSessionSummary(chat.ID, sessionSummary); err != nil {
 		e.App.Logger().Error("Failed to save chat session summary", "error", err)
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save chat session summary"})
 	}
@@ -66,7 +65,7 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate agent memory"})
 	}
 
-	if err := m.updateAgentMemory(agent.ID, agentMemorySummary); err != nil {
+	if err := m.Store.UpdateAgentMemory(agent.ID, agentMemorySummary); err != nil {
 		e.App.Logger().Error("Failed to save agent summary", "error", err)
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save summary"})
 	}
@@ -74,42 +73,32 @@ func (m *Manager) summaryChat(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, successResponse(true))
 }
 
-func (m *Manager) fetchChatHistory(chatID string) ([]types.ChatMessage, error) {
-	var chatHistory []types.ChatMessage
-	err := m.App.DB().Select("*").
-		From("ai_agent_chat_history").
-		Where(dbx.HashExp{"chat": chatID}).
-		OrderBy("created ASC").
-		All(&chatHistory)
-	return chatHistory, err
-}
-
 func (m *Manager) resolveMemoryLLMConfig(agent *types.AIAgent) (*types.ModelConfigJson, error) {
-	modelConfig, err := m.getModelConfigByIDOrDefault(agent.MemModelID, "Memory")
+	modelConfig, err := m.Store.GetModelConfigByIDOrDefault(agent.MemModelID, "Memory")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get memory model config: %w", err)
 	}
 
-	providerRecord, err := m.App.FindRecordById("model_providers", modelConfig.ProviderID)
+	providerCode, err := m.Store.GetProviderCodeByID(modelConfig.ProviderID)
 	if err != nil {
 		return nil, fmt.Errorf("memory provider not found: %w", err)
 	}
 
-	modelConfigJson := modelConfig.ToModelConfigJson(providerRecord.GetString("provider_code"))
-	m.resolveSecretReference(m.App, modelConfigJson)
+	modelConfigJson := modelConfig.ToModelConfigJson(providerCode)
+	m.Store.ResolveSecretReference(modelConfigJson)
 
 	if modelConfigJson.IsLLMReference() {
 		llmID := modelConfigJson.Param["llm"]
-		llmConfig, err := m.getModelConfigByIDOrDefault(llmID, "LLM")
+		llmConfig, err := m.Store.GetModelConfigByIDOrDefault(llmID, "LLM")
 		if err != nil {
 			return nil, fmt.Errorf("failed to get referenced LLM config: %w", err)
 		}
-		llmProviderRecord, err := m.App.FindRecordById("model_providers", llmConfig.ProviderID)
+		llmProviderCode, err := m.Store.GetProviderCodeByID(llmConfig.ProviderID)
 		if err != nil {
 			return nil, fmt.Errorf("LLM provider not found: %w", err)
 		}
-		llmConfigJson := llmConfig.ToModelConfigJson(llmProviderRecord.GetString("provider_code"))
-		m.resolveSecretReference(m.App, llmConfigJson)
+		llmConfigJson := llmConfig.ToModelConfigJson(llmProviderCode)
+		m.Store.ResolveSecretReference(llmConfigJson)
 		return llmConfigJson, nil
 	}
 
@@ -143,9 +132,8 @@ CONVERSATION LOG:
 
 func (m *Manager) generateAgentMemory(llmConfig *types.ModelConfigJson, existingMemory string, sessionSummary string) (string, error) {
 	sysPrompt := "Please update the long-term memory based on the new session summary."
-	promptParam, err := m.App.FindFirstRecordByData("sys_params", "name", "memory.system_prompt")
-	if err == nil {
-		sysPrompt = promptParam.GetString("value")
+	if val, err := m.Store.GetSysParam("memory.system_prompt"); err == nil {
+		sysPrompt = val
 	}
 
 	if existingMemory == "" {
@@ -192,23 +180,4 @@ func (m *Manager) formatConversation(chatHistory []types.ChatMessage) string {
 		convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", role, content))
 	}
 	return convBuilder.String()
-}
-
-func (m *Manager) updateChatSessionSummary(sessionID string, summary string) error {
-	record, err := m.App.FindRecordById("ai_agent_chat", sessionID)
-	if err != nil {
-		return err
-	}
-	record.Set("summary", summary)
-	return m.App.Save(record)
-}
-
-func (m *Manager) updateAgentMemory(agentID string, summary string) error {
-	agentRecord, err := m.App.FindRecordById("ai_agent", agentID)
-	if err != nil {
-		return err
-	}
-
-	agentRecord.Set("summary_memory", summary)
-	return m.App.Save(agentRecord)
 }

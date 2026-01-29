@@ -12,15 +12,12 @@ import (
 var _ hub.Plugin = (*Manager)(nil)
 
 type Manager struct {
-	App            core.App
-	Store          *store.Manager
-	BindingManager *DeviceBindingManager
+	App   core.App
+	Store *store.Manager
 }
 
 func NewManager() *Manager {
-	return &Manager{
-		BindingManager: NewDeviceBindingManager(),
-	}
+	return &Manager{}
 }
 
 func (m *Manager) Name() string {
@@ -42,7 +39,6 @@ func (m *Manager) Initialize(hub *hub.Hub) error {
 }
 
 func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
-	hubAPI := se.Router.Group("/hub/api")
 	xiaozhi := se.Router.Group("/xiaozhi")
 	xiaozhi.POST("/ota", m.otaRequest)
 	xiaozhi.POST("/ota/activate", m.otaActivateRequest)
@@ -68,9 +64,6 @@ func (m *Manager) registerAuthRoutes(se *core.ServeEvent) error {
 	// Emit chat summary
 	apiAuth.POST("/agent/chat-summary/{sessionId}/save", m.summaryChat)
 
-	// Device binding (manually from Hub UI)
-	hubAPI.POST("/device/bind", m.deviceBind)
-
 	return nil
 }
 
@@ -86,12 +79,11 @@ func (m *Manager) requireAuth(e *core.RequestEvent) error {
 	}
 	token := parts[1]
 
-	record, err := m.App.FindFirstRecordByData("sys_params", "name", "server.secret")
+	secret, err := m.Store.GetSysParam("server.secret")
 	if err != nil {
 		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Server secret not configured"})
 	}
 
-	secret := record.GetString("value")
 	if secret == "" || token != secret {
 		return e.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
 	}

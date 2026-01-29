@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/phamviet/xiaozhi-hub/xiaozhi/types"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -124,38 +123,19 @@ func (m *Manager) otaRequest(e *core.RequestEvent) error {
 	}
 
 	// Store request body to ota_requests collection
-	collection, err := e.App.FindCollectionByNameOrId("ota_requests")
-	if err == nil {
-		record := core.NewRecord(collection)
-		record.Set("mac_address", deviceID)
-		record.Set("board_type", req.Board.Type)
-		record.Set("body_json", bodyString)
-		if err := e.App.Save(record); err != nil {
-			e.App.Logger().Error("Failed to save ota_request", "error", err)
-		}
+	if err := m.Store.LogOTARequest(deviceID, req.Board.Type, bodyString); err != nil {
+		e.App.Logger().Error("Failed to save ota_request", "error", err)
 	}
 
 	// Get websocket url and secret from sys_params
 	wsURL := ""
 	secret := ""
 
-	var params []struct {
-		Name  string `db:"name"`
-		Value string `db:"value"`
+	if val, err := m.Store.GetSysParam("server.websocket"); err == nil {
+		wsURL = val
 	}
-	err = e.App.DB().Select("name", "value").
-		From("sys_params").
-		Where(dbx.HashExp{"name": []any{"server.websocket", "server.secret"}}).
-		All(&params)
-
-	if err == nil {
-		for _, p := range params {
-			if p.Name == "server.websocket" {
-				wsURL = p.Value
-			} else if p.Name == "server.secret" {
-				secret = p.Value
-			}
-		}
+	if val, err := m.Store.GetSysParam("server.secret"); err == nil {
+		secret = val
 	}
 
 	now := time.Now()
@@ -269,6 +249,11 @@ func (m *Manager) otaActivateRequest(e *core.RequestEvent) error {
 	})
 }
 
+type DeviceBindRequest struct {
+	Code    string `json:"code"`
+	AgentID string `json:"agentId"`
+}
+
 // otaBindDeviceRequest /xiaozhi/ota/bind-device
 func (m *Manager) otaBindDeviceRequest(e *core.RequestEvent) error {
 	authRecord := e.Auth
@@ -301,7 +286,7 @@ func (m *Manager) otaBindDeviceRequest(e *core.RequestEvent) error {
 
 	if req.AgentID != "" {
 		// Use existing agent
-		agent, err := m.getAgentByID(req.AgentID)
+		agent, err := m.Store.GetAgentByID(req.AgentID)
 		if err != nil {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
 		}
@@ -314,7 +299,7 @@ func (m *Manager) otaBindDeviceRequest(e *core.RequestEvent) error {
 			agentName = req.Code
 		}
 
-		agent, err := m.createNewAgent(authRecord.Id, agentName)
+		agent, err := m.Store.CreateNewAgent(authRecord.Id, agentName)
 		if err != nil {
 			e.App.Logger().Error("Failed to create new agent", "error", err, "userId", authRecord.Id, "agentName", agentName)
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create new agent"})
@@ -324,17 +309,7 @@ func (m *Manager) otaBindDeviceRequest(e *core.RequestEvent) error {
 		agentID = agent.ID
 	}
 
-	record, err := e.App.FindFirstRecordByData("ai_device", "mac_address", device.MacAddress)
-	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "device record not found"})
-	}
-
-	record.Set("agent", agentID)
-	record.Set("user", agentUserID)
-	record.Set("bind_code", "")
-	record.Set("status", types.DeviceCodeVerified)
-
-	if err := e.App.Save(record); err != nil {
+	if err := m.Store.BindDevice(device.MacAddress, agentID, agentUserID); err != nil {
 		e.App.Logger().Error("Failed to save device binding", "error", err, "mac", device.MacAddress)
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save device binding"})
 	}

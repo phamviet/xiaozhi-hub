@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/phamviet/xiaozhi-hub/xiaozhi/store"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
 )
 
 type ReportChatRequest struct {
@@ -37,7 +36,7 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "macAddress is required"})
 	}
 
-	device, err := m.getDeviceByMacAddress(req.MacAddress)
+	device, err := m.Store.GetDeviceByMacAddress(req.MacAddress)
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Device not found"})
 	}
@@ -46,14 +45,9 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": "unbound device"})
 	}
 
-	chat, err := m.loadChatSession(req.SessionId, device.AgentId)
+	chat, err := m.Store.LoadChatSession(req.SessionId, device.AgentId)
 	if err != nil {
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
-	collection, err := e.App.FindCollectionByNameOrId("ai_agent_chat_history")
-	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "ai_agent_chat_history collection not found"})
 	}
 
 	content := req.Content
@@ -64,28 +58,24 @@ func (m *Manager) reportChat(e *core.RequestEvent) error {
 		}
 	}
 
-	record := core.NewRecord(collection)
-	record.Set("chat", chat.ID)
-	record.Set("device", device.Id)
-	record.Set("content", content)
-	record.Set("chat_type", fmt.Sprintf("%d", req.ChatType))
+	chatHistoryParams := store.ChatHistoryParams{
+		ChatID:      chat.ID,
+		DeviceID:    device.Id,
+		Content:     content,
+		ChatType:    fmt.Sprintf("%d", req.ChatType),
+		ReportTime:  req.ReportTime,
+		AudioFormat: "mp3",
+	}
 
 	if req.AudioBase64 != "" {
 		audioData, err := base64.StdEncoding.DecodeString(req.AudioBase64)
 		if err != nil {
 			return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid audioBase64"})
 		}
-
-		filename := fmt.Sprintf("audio_%d_%d.mp3", time.Now().UnixNano(), req.ReportTime)
-		file, err := filesystem.NewFileFromBytes(audioData, filename)
-		if err != nil {
-			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create file from bytes"})
-		}
-
-		record.Set("chat_audio", file)
+		chatHistoryParams.AudioBytes = audioData
 	}
 
-	if err := e.App.Save(record); err != nil {
+	if err := m.Store.SaveChatHistory(chatHistoryParams); err != nil {
 		e.App.Logger().Error("Failed to save chat history", "error", err, "mac", req.MacAddress)
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save chat history"})
 	}

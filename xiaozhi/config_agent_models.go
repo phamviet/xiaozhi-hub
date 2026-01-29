@@ -58,17 +58,12 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 	}
 
 	e.App.Logger().Info("Received agent models config request", "req", req, "headers", e.Request.Header)
-	device, err := m.getDeviceByMacAddress(req.MacAddress)
+	device, err := m.Store.GetDeviceByMacAddress(req.MacAddress)
 	if err != nil {
-		code := m.BindingManager.GetOrGenerateCode(req.MacAddress, req.ClientId)
-		return e.JSON(http.StatusOK, map[string]interface{}{
-			"code": 10042,
-			"data": nil,
-			"msg":  code,
-		})
+		return e.JSON(http.StatusNotFound, map[string]string{"error": "Device not found"})
 	}
 
-	agent, err := m.getAgentByID(device.AgentId)
+	agent, err := m.Store.GetAgentByID(device.AgentId)
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "Agent not found"})
 	}
@@ -90,7 +85,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 	}
 
 	getModelConfigJson := func(id string, modelType string) (*types.ModelConfigJson, error) {
-		modelConfig, err := m.getModelConfigByIDOrDefault(id, modelType)
+		modelConfig, err := m.Store.GetModelConfigByIDOrDefault(id, modelType)
 		if err != nil {
 			return nil, err
 		}
@@ -100,13 +95,13 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 			return nil, errors.New("model provider_id is empty")
 		}
 
-		providerRecord, err := e.App.FindRecordById("model_providers", modelConfig.ProviderID)
+		providerCode, err := m.Store.GetProviderCodeByID(modelConfig.ProviderID)
 		if err != nil {
 			e.App.Logger().Error("Model provider not found", "id", modelConfig.ProviderID, "error", err)
 			return nil, errors.New("model provider not found")
 		}
 
-		return modelConfig.ToModelConfigJson(providerRecord.GetString("provider_code")), nil
+		return modelConfig.ToModelConfigJson(providerCode), nil
 	}
 
 	var selectedModule = make(map[string]string)
@@ -120,7 +115,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		}
 
 		if modelConfig != nil {
-			m.resolveSecretReference(e.App, modelConfig)
+			m.Store.ResolveSecretReference(modelConfig)
 			selectedModule[modelType] = modelConfig.ID
 			if modelConfig.IsLLMReference() {
 				llmIDs = append(llmIDs, modelConfig.Param["llm"])
@@ -150,7 +145,7 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 		}
 		modelConfig, err := getModelConfigJson(llmID, "LLM")
 		if err == nil && modelConfig != nil {
-			m.resolveSecretReference(e.App, modelConfig)
+			m.Store.ResolveSecretReference(modelConfig)
 			if response.ModelConfigMap["LLM"] == nil {
 				response.ModelConfigMap["LLM"] = make(map[string]*types.ModelConfigJson)
 			}
@@ -161,20 +156,4 @@ func (m *Manager) getAgentModels(e *core.RequestEvent) error {
 	response.SelectedModule = selectedModule
 
 	return e.JSON(http.StatusOK, successResponse(response))
-}
-
-func (m *Manager) resolveSecretReference(app core.App, modelConfig *types.ModelConfigJson) {
-	credentialID, ok := modelConfig.Param["secret_ref"]
-	if !ok {
-		return
-	}
-
-	cred, err := app.FindRecordById("user_credentials", credentialID)
-	if err != nil {
-		app.Logger().Error("Failed to resolve user credential", "id", credentialID, "error", err)
-		return
-	}
-
-	modelConfig.Param["api_key"] = cred.GetString("api_key")
-	delete(modelConfig.Param, "secret_ref")
 }

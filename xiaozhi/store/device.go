@@ -71,6 +71,29 @@ func (m *Manager) CreateUnboundDevice(macAddress string) (*BindInfo, error) {
 	return &BindInfo{BindCode: bindCode, Challenge: challenge}, nil
 }
 
+func (m *Manager) CreateBoundDevice(macAddress, agentID, userID string) error {
+	record := core.NewRecord(m.DeviceCollection)
+	record.Set("mac_address", macAddress)
+	record.Set("agent", agentID)
+	record.Set("user", userID)
+
+	return m.App.Save(record)
+}
+
+func (m *Manager) BindDevice(macAddress, agentID, userID string) error {
+	record, err := m.App.FindFirstRecordByData(DeviceCollectionName, "mac_address", macAddress)
+	if err != nil {
+		return err
+	}
+
+	record.Set("agent", agentID)
+	record.Set("user", userID)
+	record.Set("bind_code", "")
+	record.Set("status", types.DeviceCodeVerified)
+
+	return m.App.Save(record)
+}
+
 func (m *Manager) ActivateDevice(deviceID, serialNumber string) error {
 	record, err := m.App.FindRecordById(DeviceCollectionName, deviceID)
 	if err != nil {

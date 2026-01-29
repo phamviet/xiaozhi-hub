@@ -33,7 +33,7 @@ type BaseConfig struct {
 // serverBaseConfig /xiaozhi/config/server-base
 func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 	// 1. get a first enabled config from sys_config collection
-	config, err := e.App.FindFirstRecordByData("sys_config", "disabled", false)
+	config, err := m.Store.GetActiveSysConfig()
 	if err != nil {
 		return e.JSON(http.StatusNotFound, map[string]string{"error": "No enabled config found"})
 	}
@@ -58,7 +58,7 @@ func (m *Manager) serverBaseConfig(e *core.RequestEvent) error {
 	}
 
 	// 2. Merge sys_params into baseConfig
-	sysParams, err := m.getSysParams("server.secret", "agent.base_prompt", "server.websocket")
+	sysParams, err := m.Store.GetSysParams("server.secret", "agent.base_prompt", "server.websocket")
 	if err != nil {
 		return logError(err)
 	}
