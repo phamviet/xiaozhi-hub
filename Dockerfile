@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM oven/bun:alpine AS ui-builder
+FROM --platform=$BUILDPLATFORM oven/bun:debian AS ui-builder
 
 WORKDIR /app/ui
 
