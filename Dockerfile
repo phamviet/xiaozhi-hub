@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM oven/bun:debian AS ui-builder
+FROM oven/bun:debian AS ui-builder
 
 WORKDIR /app/ui
 
