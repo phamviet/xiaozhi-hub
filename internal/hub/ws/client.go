@@ -242,5 +242,5 @@ func (c *Client) Close() {
 	durationInSeconds := fmt.Sprintf("%.2f seconds", duration.Seconds())
 	c.logger.Debug("closing connection...", "duration", durationInSeconds)
 	c.cancel()
-	c.asr.Stop()
+	c.asr.Close()
 }

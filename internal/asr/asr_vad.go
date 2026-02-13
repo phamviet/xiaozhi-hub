@@ -2,6 +2,8 @@ package asr
 
 import sherpa "github.com/k2-fsa/sherpa-onnx-go/sherpa_onnx"
 
+const WindowSizeVad = 512
+
 type VadConfig struct {
 	model               string
 	bufferSizeInSeconds float32
@@ -27,7 +29,7 @@ func NewVad(opts ...VadOption) *sherpa.VoiceActivityDetector {
 	vadCfg := sherpa.VadModelConfig{
 		SileroVad: sherpa.SileroVadModelConfig{
 			Model:      cfg.model,
-			WindowSize: 512,
+			WindowSize: WindowSizeVad,
 		},
 		SampleRate: 16000,
 		NumThreads: 1,

@@ -66,6 +66,10 @@ func NewAsr(opts ...Option) (*Asr, error) {
 	return a, nil
 }
 
+func (a *Asr) Result() <-chan string {
+	return a.result
+}
+
 func (a *Asr) Write(data []byte) error {
 	if !a.started {
 		return fmt.Errorf("ASR not started")
@@ -100,12 +104,11 @@ func (a *Asr) decodeAudio(data []byte) {
 
 	samples := buf[:n]
 	a.buffer.Push(samples)
-	windowSize := 512
 
-	for a.buffer.Size() >= windowSize {
+	for a.buffer.Size() >= WindowSizeVad {
 		head := a.buffer.Head()
-		s := a.buffer.Get(head, windowSize)
-		a.buffer.Pop(windowSize)
+		s := a.buffer.Get(head, WindowSizeVad)
+		a.buffer.Pop(WindowSizeVad)
 
 		a.vad.AcceptWaveform(s)
 
@@ -174,13 +177,12 @@ func (a *Asr) Stop() {
 	close(a.stopChan)
 	close(a.speechChan)
 
-	//for range a.result {
-	//}
 	a.logger.Debug("asr.Stop")
 	a.vad.Clear()
-	// sherpa.DeleteVoiceActivityDetector(vad)
 }
 
-func (a *Asr) Result() <-chan string {
-	return a.result
+func (a *Asr) Close() {
+	a.Stop()
+	sherpa.DeleteVoiceActivityDetector(a.vad)
+	sherpa.DeleteCircularBuffer(a.buffer)
 }

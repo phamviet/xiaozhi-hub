@@ -12,7 +12,6 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/x/session"
-	"github.com/firebase/genkit/go/core/x/streaming"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/phamviet/xiaozhi-hub/internal/audio"
@@ -74,8 +73,6 @@ func (c *Client) initializeAgentFlow(cfg *AgentConfig) {
 	}
 
 	c.g = genkit.Init(c.ctx, genkit.WithDefaultModel(cfg.LLMModel), genkit.WithPlugins(&googlegenai.GoogleAI{}))
-	streamManager := streaming.NewInMemoryStreamManager(streaming.WithTTL(10 * time.Minute))
-	_ = streamManager
 	c.ttsFlow = genkit.DefineFlow(c.g, "tts", func(ctx context.Context, input string) (*tts.Output, error) {
 		if strings.HasPrefix(input, "Genkit") {
 			return tts.NewOutputFromFile("sample/lt30.wav", 24000, 1, 16)
