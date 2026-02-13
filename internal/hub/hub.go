@@ -5,22 +5,24 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/phamviet/xiaozhi-hub/internal/hub/services"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
 
 type Hub struct {
 	core.App
-	appURL  string
-	plugins []Plugin
+	appURL   string
+	plugins  []Plugin
+	services *services.ServiceContainer
 }
 
 func NewHub(app core.App, plugins []Plugin) *Hub {
 	hub := &Hub{
-		plugins: plugins,
+		plugins:  plugins,
+		services: services.NewServiceContainer(app),
 	}
 	hub.App = app
-
 	hub.appURL, _ = os.LookupEnv("APP_URL")
 
 	return hub
@@ -112,6 +114,8 @@ func (h *Hub) registerRoutes(se *core.ServeEvent) error {
 		total, err := e.App.CountRecords("users")
 		return e.JSON(http.StatusOK, map[string]bool{"firstRun": err == nil && total == 0})
 	})
+
+	apiNoAuth.GET("/v1", h.handleAgentConnect)
 
 	return nil
 }
