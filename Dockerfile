@@ -9,10 +9,10 @@ COPY ui/ ./
 RUN bun run build
 
 # ? -------------------------
-FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
-RUN DEBIAN_FRONTEND=noninteractive \
-    apt-get update && \
-    apt-get install -y libopus-dev libopusfile-dev libsoxr-dev
+FROM golang:1.25 AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopus-dev libopusfile-dev libsoxr-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -28,7 +28,18 @@ COPY --from=ui-builder /app/ui/dist ./ui/dist
 
 # Build
 ARG TARGETOS TARGETARCH
-RUN CGO_ENABLED=1 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-w -s" -o pb .
+RUN CGO_ENABLED=1 go build -ldflags "-w -s" -o pb .
+
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        LD=aarch64-unknown-linux-gnu; \
+    else \
+      LD=x86_64-unknown-linux-gnu; \
+    fi && \
+    SHERPA_ONNX_VERSION=$(go list -m -f '{{ .Version }}' github.com/k2-fsa/sherpa-onnx-go-linux) && \
+    SHERPA_ONNX_LIB_PATH=/go/pkg/mod/github.com/k2-fsa/sherpa-onnx-go-linux@${SHERPA_ONNX_VERSION}/lib/${LD} && \
+    mkdir -p /app/lib && \
+    cd $SHERPA_ONNX_LIB_PATH && \
+    cp libsherpa-onnx-c-api.so libonnxruntime.so /app/lib/
 
 # https://github.com/benbjohnson/litestream/blob/main/Dockerfile
 FROM litestream/litestream
@@ -43,8 +54,7 @@ RUN mkdir -p /pb_data /models
 
 COPY --from=builder /app/pb /
 COPY --from=builder /app/silero_vad.onnx /models/
-COPY --from=builder /go/pkg/mod/github.com/k2-fsa/sherpa-onnx-go-linux@v1.12.23/lib/aarch64-unknown-linux-gnu/libsherpa-onnx-c-api.so /lib/aarch64-linux-gnu/
-COPY --from=builder /go/pkg/mod/github.com/k2-fsa/sherpa-onnx-go-linux@v1.12.23/lib/aarch64-unknown-linux-gnu/libonnxruntime.so /lib/aarch64-linux-gnu/
+COPY --from=builder /app/lib/* /lib/
 
 COPY scripts/docker-entrypoint.sh /
 
