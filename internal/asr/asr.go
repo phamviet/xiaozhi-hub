@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/hraban/opus"
 	sherpa "github.com/k2-fsa/sherpa-onnx-go/sherpa_onnx"
@@ -15,6 +16,7 @@ const FrameSizeMs = 60
 const FrameSize = int(float32(SampleRate) * float32(FrameSizeMs) / 1000)
 
 type Asr struct {
+	mu         *sync.RWMutex
 	result     chan string
 	speechChan chan *sherpa.GeneratedAudio
 	sampleRate int
@@ -48,6 +50,7 @@ func NewAsr(opts ...Option) (*Asr, error) {
 	}
 	buffer := sherpa.NewCircularBuffer(10 * SampleRate)
 	a := &Asr{
+		mu:         &sync.RWMutex{},
 		decoder:    decoder,
 		vad:        vad,
 		buffer:     buffer,
@@ -158,6 +161,8 @@ func (a *Asr) processSpeechChan() {
 }
 
 func (a *Asr) Start() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.started {
 		return
 	}
@@ -169,6 +174,9 @@ func (a *Asr) Start() {
 }
 
 func (a *Asr) Stop() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if !a.started {
 		return
 	}

@@ -50,9 +50,7 @@ func GetUpgrader() *gws.Upgrader {
 		return upgrader
 	}
 	handler := &Handler{}
-	upgrader = gws.NewUpgrader(handler, &gws.ServerOption{
-		ParallelEnabled: true,
-	})
+	upgrader = gws.NewUpgrader(handler, &gws.ServerOption{})
 
 	return upgrader
 }
@@ -91,16 +89,13 @@ func (h *Handler) OnMessage(conn *gws.Conn, message *gws.Message) {
 	}
 	client := wsConn.(*WsConn).Client
 
-	defer message.Close()
 	if message.Opcode == gws.OpcodeText {
 		client.OnTextMessage(message)
 		return
 	}
 
 	if message.Opcode == gws.OpcodeBinary {
-		if err := client.OnBinaryMessage(message.Bytes()); err != nil {
-			// Handle error
-		}
+		client.OnBinaryMessage(message.Bytes())
 	}
 }
 

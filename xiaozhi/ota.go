@@ -127,16 +127,18 @@ func (m *Manager) otaRequest(e *core.RequestEvent) error {
 		e.App.Logger().Error("Failed to save ota_request", "error", err)
 	}
 
-	// Get websocket url and secret from sys_params
-	wsURL := ""
+	// Get secret from sys_params
 	secret := ""
-
-	if val, err := m.Store.GetSysParam("server.websocket"); err == nil {
-		wsURL = val
-	}
 	if val, err := m.Store.GetSysParam("server.secret"); err == nil {
 		secret = val
 	}
+
+	// Construct wsURL from current request host
+	scheme := "ws"
+	if e.Request.TLS != nil {
+		scheme = "wss"
+	}
+	wsURL := fmt.Sprintf("%s://%s/api/v1", scheme, e.Request.Host)
 
 	now := time.Now()
 	timestamp := now.Unix()

@@ -57,6 +57,9 @@ type Client struct {
 	startTime        time.Time
 	sampleRate       int
 	exitIntentCalled bool
+
+	workChan chan func()
+	workerWg sync.WaitGroup
 }
 
 // Ensure Client implements handlers.Context
@@ -94,6 +97,8 @@ func NewClient(conn *gws.Conn, deviceID string, sessionID string, services *serv
 		ClientSampleRate:      16000,
 		startTime:             time.Now(),
 		exitIntentCalled:      false,
+
+		workChan: make(chan func(), 100),
 	}
 
 	c.clientMcpTransport = imcp.NewWebsocketTransport(&imcp.WebsocketTransportConfig{
@@ -104,6 +109,11 @@ func NewClient(conn *gws.Conn, deviceID string, sessionID string, services *serv
 	c.mcpClient = client.NewClient(c.clientMcpTransport)
 	c.initializeAgentFlow(nil)
 	c.defineTools()
+
+	// Start worker goroutine
+	c.workerWg.Add(1)
+	go c.worker()
+
 	go c.processAsrResults()
 
 	return c
@@ -162,8 +172,17 @@ func (c *Client) OnTextMessage(message *gws.Message) {
 	case <-c.ctx.Done():
 		return
 	default:
-		if err := c.handleTextMessage(message.Bytes()); err != nil {
-			c.logger.Error("handle message", "error", err)
+		msgBytes := make([]byte, len(message.Bytes()))
+		copy(msgBytes, message.Bytes())
+
+		select {
+		case c.workChan <- func() {
+			if err := c.handleTextMessage(msgBytes); err != nil {
+				c.logger.Error("handle message", "error", err)
+			}
+		}:
+		default:
+			c.logger.Warn("Work queue full, dropping message", "sessionID", c.sessionID)
 		}
 	}
 }
@@ -204,13 +223,13 @@ func (c *Client) handleTextMessage(msg []byte) error {
 }
 
 // OnBinaryMessage processes incoming audio data
-func (c *Client) OnBinaryMessage(data []byte) error {
+func (c *Client) OnBinaryMessage(data []byte) {
 	if c.ClientAudioFormat == "opus" {
-		return c.asr.Write(data)
+		_ = c.asr.Write(data)
+		return
 	}
 
 	c.logger.Warn("Not supported audio format")
-	return nil
 }
 
 func (c *Client) processAsrResults() {
@@ -242,5 +261,29 @@ func (c *Client) Close() {
 	durationInSeconds := fmt.Sprintf("%.2f seconds", duration.Seconds())
 	c.logger.Debug("closing connection...", "duration", durationInSeconds)
 	c.cancel()
+	close(c.workChan)
+	c.workerWg.Wait()
 	c.asr.Close()
+}
+
+func (c *Client) worker() {
+	defer c.workerWg.Done()
+
+	for work := range c.workChan {
+		ctx, cancel := context.WithTimeout(c.ctx, 3*time.Minute)
+		done := make(chan struct{})
+
+		go func(w func()) {
+			defer close(done)
+			w()
+		}(work)
+
+		select {
+		case <-done:
+			cancel()
+		case <-ctx.Done():
+			cancel()
+			c.logger.Warn("Work timeout or cancelled")
+		}
+	}
 }

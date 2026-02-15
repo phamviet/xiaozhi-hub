@@ -26,9 +26,9 @@ func (c *Client) handleListenMessage(msg []byte) error {
 		c.Logger().Info("Wake word detected", "text", listenMsg.Text)
 
 		// Save user message to history
-		if err := c.Services().History.SaveMessage(c.SessionID(), "user", listenMsg.Text); err != nil {
-			c.Logger().Error("Failed to save message history", "error", err)
-		}
+		//if err := c.Services().History.SaveMessage(c.SessionID(), "user", listenMsg.Text); err != nil {
+		//	c.Logger().Error("Failed to save message history", "error", err)
+		//}
 
 		c.Chat(listenMsg.Text)
 	}
