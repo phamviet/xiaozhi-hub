@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/firebase/genkit/go/ai"
@@ -167,12 +168,58 @@ func (c *Client) Chat(text string) {
 	// send llm intent
 
 	lines := strings.SplitSeq(result, "\n")
+	var nonEmptyLines []string
 	for line := range lines {
-		if line == "" {
+		if line != "" {
+			nonEmptyLines = append(nonEmptyLines, line)
+		}
+	}
+
+	if len(nonEmptyLines) == 0 {
+		time.Sleep(time.Duration(500) * time.Millisecond)
+		_ = c.SendTtsStop()
+		return
+	}
+
+	type ttsResult struct {
+		text     string
+		filename string
+		err      error
+	}
+
+	resultChan := make(chan ttsResult, len(nonEmptyLines))
+	var wg sync.WaitGroup
+
+	for _, line := range nonEmptyLines {
+		wg.Add(1)
+		go func(l string) {
+			defer wg.Done()
+			output, err := c.ttsFlow.Run(c.ctx, l)
+			if err != nil {
+				c.logger.Error("ttsFlow.Run", "error", err)
+				resultChan <- ttsResult{err: err}
+				return
+			}
+			filename, err := wav.EncodeTts(output)
+			if err != nil {
+				c.logger.Error("wav.EncodeTts", "error", err)
+				resultChan <- ttsResult{err: err}
+				return
+			}
+			resultChan <- ttsResult{text: l, filename: filename}
+		}(line)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	for res := range resultChan {
+		if res.err != nil {
 			continue
 		}
-
-		c.reply(line)
+		c.streamTtsFile(res.text, res.filename)
 	}
 
 	time.Sleep(time.Duration(500) * time.Millisecond)
@@ -184,18 +231,7 @@ func (c *Client) Chat(text string) {
 	}
 }
 
-func (c *Client) reply(text string) {
-	output, err := c.ttsFlow.Run(c.ctx, text)
-	if err != nil {
-		c.logger.Error("ttsFlow.Run", "error", err)
-		return
-	}
-	filename, err := wav.EncodeTts(output)
-	if err != nil {
-		c.logger.Error("wav.EncodeTts", "error", err)
-		return
-	}
-
+func (c *Client) streamTtsFile(text string, filename string) {
 	audioFile, err := os.Open(filename)
 	if err != nil {
 		c.logger.Error("os.Open", "filename", filename, "error", err)
@@ -207,18 +243,16 @@ func (c *Client) reply(text string) {
 	duration, _ := decoder.Duration()
 	if _, err = audioFile.Seek(0, 0); err != nil {
 		c.logger.Error("audioFile.Seek", "error", err)
+		_ = audioFile.Close()
+		_ = os.Remove(filename)
 		return
 	}
 
-	// set timeout based on audio duration + 5-second padding
 	ctx, cancel := context.WithTimeout(context.Background(), duration+5*time.Second)
-	defer func() {
-		cancel()
-		_ = audioFile.Close()
-		_ = os.Remove(audioFile.Name())
-	}()
-
 	if err := audio.StreamOpus(ctx, audioFile, c.conn); err != nil {
 		c.logger.Error("audio.StreamOpus", "error", err)
 	}
+	cancel()
+	_ = audioFile.Close()
+	_ = os.Remove(filename)
 }

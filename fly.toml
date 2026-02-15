@@ -6,7 +6,14 @@
 app = 'xiaozhi-hub'
 primary_region = 'sin'
 
+[mounts]
+  source = "xiaozhi_data"
+  destination = "/pb_data"
+
 [build]
+
+[env]
+  TZ = 'Asia/Ho_Chi_Minh'
 
 [http_service]
   internal_port = 8090
