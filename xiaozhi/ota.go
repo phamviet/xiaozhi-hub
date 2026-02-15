@@ -135,7 +135,7 @@ func (m *Manager) otaRequest(e *core.RequestEvent) error {
 
 	// Construct wsURL from current request host
 	scheme := "ws"
-	if e.Request.TLS != nil {
+	if "https" == e.Request.Header.Get("x-forwarded-protocol") {
 		scheme = "wss"
 	}
 	wsURL := fmt.Sprintf("%s://%s/api/v1", scheme, e.Request.Host)
