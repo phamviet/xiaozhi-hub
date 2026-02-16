@@ -15,6 +15,7 @@ import (
 	"github.com/firebase/genkit/go/core/x/session"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
+	"github.com/firebase/genkit/go/plugins/mcp"
 	"github.com/phamviet/xiaozhi-hub/internal/audio"
 	"github.com/phamviet/xiaozhi-hub/internal/tts"
 	"github.com/phamviet/xiaozhi-hub/internal/wav"
@@ -68,12 +69,31 @@ func NewAgentConfig() *AgentConfig {
 
 const sampleText = "Genkit is the best Gen AI library!"
 
-func (c *Client) initializeAgentFlow(cfg *AgentConfig) {
+func (c *Client) initializeAgent(cfg *AgentConfig) {
 	if cfg == nil {
 		cfg = NewAgentConfig()
 	}
 
 	c.g = genkit.Init(c.ctx, genkit.WithDefaultModel(cfg.LLMModel), genkit.WithPlugins(&googlegenai.GoogleAI{}))
+	c.initInternalTools()
+
+	// connect to the device's mcp server
+	client, err := mcp.NewClient(c.ctx, mcp.MCPClientOptions{
+		Name:      "xiaozhi-hub-client",
+		Transport: c.mcpTransport,
+	})
+	if err != nil {
+		c.logger.Error("Failed to create MCP client", "error", err)
+		return
+	}
+
+	// Get tools
+	tools, _ := client.GetActiveTools(c.ctx, c.g)
+	c.logger.Info("Found MCP time tools", "count", len(tools))
+	for _, tool := range tools {
+		c.tools = append(c.tools, tool)
+	}
+
 	c.ttsFlow = genkit.DefineFlow(c.g, "tts", func(ctx context.Context, input string) (*tts.Output, error) {
 		if strings.HasPrefix(input, "Genkit") {
 			return tts.NewOutputFromFile("sample/lt30.wav", 24000, 1, 16)
@@ -154,6 +174,10 @@ func (c *Client) initializeAgentFlow(cfg *AgentConfig) {
 
 		return resp.Text(), nil
 	})
+
+	c.mu.Lock()
+	c.ready = true
+	c.mu.Unlock()
 }
 
 func (c *Client) Chat(ctx context.Context, text string) {

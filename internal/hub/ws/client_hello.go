@@ -44,19 +44,7 @@ func (c *Client) handleHelloMessage(data []byte) error {
 		return err
 	}
 
-	go func() {
-		c.logger.Debug("Initializing MCP client...")
-		cs := c.initMcpClientSession()
-		if cs != nil {
-			c.logger.Info("MCP server", "result", cs.InitializeResult())
-		}
-		//initResult, err := c.mcpClient.Initialize(ctx, initRequest)
-		//if err != nil {
-		//	c.logger.Error("initialize mcp failed", "error", err)
-		//}
-		//
-		//c.logger.Info("MCP initialized", "result", initResult)
-	}()
+	go c.initializeAgent(nil)
 
 	return nil
 }

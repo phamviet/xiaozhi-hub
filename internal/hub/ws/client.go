@@ -52,13 +52,15 @@ type Client struct {
 	ClientChannels        int
 	ClientFrameDuration   int
 
-	mcpTransport *mcp.XiaozhiTransport
+	mcpTransport     *mcp.XiaozhiTransport
+	mcpClientSession *gomcp.ClientSession
 
 	startTime        time.Time
 	sampleRate       int
 	exitIntentCalled bool
 
 	listenChan chan string
+	ready      bool
 	workChan   chan func()
 	workerWg   sync.WaitGroup
 }
@@ -100,12 +102,10 @@ func NewClient(conn *gws.Conn, deviceID string, sessionID string, services *serv
 		exitIntentCalled:      false,
 
 		listenChan: make(chan string, 100),
+		ready:      false,
 	}
 
 	c.mcpTransport = mcp.NewXiaozhiTransport(sessionID, c.SendJSON)
-
-	c.initializeAgentFlow(nil)
-	c.defineTools()
 
 	// Start worker goroutine
 	c.workerWg.Add(1)

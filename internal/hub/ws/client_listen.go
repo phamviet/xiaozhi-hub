@@ -41,6 +41,23 @@ func (c *Client) handleListenMessage(msg []byte) error {
 func (c *Client) processListenChan() {
 	defer c.workerWg.Done()
 
+	// Wait until client is ready before processing
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-time.After(100 * time.Millisecond):
+			c.mu.RLock()
+			ready := c.ready
+			c.mu.RUnlock()
+			if ready {
+				goto StartProcessing
+			}
+		}
+	}
+
+StartProcessing:
+
 	for text := range c.listenChan {
 		ctx, cancel := context.WithTimeout(c.ctx, 3*time.Minute)
 		done := make(chan struct{})
