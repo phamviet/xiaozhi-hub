@@ -156,8 +156,12 @@ func (c *Client) initializeAgentFlow(cfg *AgentConfig) {
 	})
 }
 
-func (c *Client) Chat(text string) {
-	result, err := c.chatFlow.Run(c.ctx, text)
+func (c *Client) Chat(ctx context.Context, text string) {
+	if ctx.Err() != nil {
+		return
+	}
+
+	result, err := c.chatFlow.Run(ctx, text)
 	if err != nil {
 		c.logger.Error("chat.flow", "error", err)
 		return
@@ -187,39 +191,83 @@ func (c *Client) Chat(text string) {
 		err      error
 	}
 
-	resultChan := make(chan ttsResult, len(nonEmptyLines))
+	// Process TTS in parallel but stream in order as soon as each is ready
+	results := make([]ttsResult, len(nonEmptyLines))
+	readyChan := make(chan int, len(nonEmptyLines))
+	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	for _, line := range nonEmptyLines {
+	for i, line := range nonEmptyLines {
 		wg.Add(1)
-		go func(l string) {
+		go func(idx int, l string) {
 			defer wg.Done()
 			output, err := c.ttsFlow.Run(c.ctx, l)
 			if err != nil {
-				c.logger.Error("ttsFlow.Run", "error", err)
-				resultChan <- ttsResult{err: err}
+				c.logger.Error("ttsFlow.Run", "error", err, "text", l)
+				mu.Lock()
+				results[idx] = ttsResult{err: err}
+				mu.Unlock()
+				readyChan <- idx
 				return
 			}
 			filename, err := wav.EncodeTts(output)
 			if err != nil {
-				c.logger.Error("wav.EncodeTts", "error", err)
-				resultChan <- ttsResult{err: err}
+				c.logger.Error("wav.EncodeTts", "error", err, "text", l)
+				mu.Lock()
+				results[idx] = ttsResult{err: err}
+				mu.Unlock()
+				readyChan <- idx
 				return
 			}
-			resultChan <- ttsResult{text: l, filename: filename}
-		}(line)
+			mu.Lock()
+			results[idx] = ttsResult{text: l, filename: filename}
+			mu.Unlock()
+			readyChan <- idx
+		}(i, line)
 	}
 
 	go func() {
 		wg.Wait()
-		close(resultChan)
+		close(readyChan)
 	}()
 
-	for res := range resultChan {
-		if res.err != nil {
+	// Stream in order as results become available
+	nextIdx := 0
+	completed := make([]bool, len(nonEmptyLines))
+
+	for nextIdx < len(nonEmptyLines) {
+		// Check if next index is already ready
+		mu.Lock()
+		isReady := completed[nextIdx]
+		mu.Unlock()
+
+		if isReady {
+			res := results[nextIdx]
+			if res.err == nil {
+				c.streamTtsFile(res.text, res.filename)
+			}
+			nextIdx++
 			continue
 		}
-		c.streamTtsFile(res.text, res.filename)
+
+		// Wait for next completion
+		idx, ok := <-readyChan
+		if !ok {
+			break // Channel closed, all done
+		}
+
+		mu.Lock()
+		completed[idx] = true
+		mu.Unlock()
+
+		// If this is the next expected index, stream it
+		if idx == nextIdx {
+			res := results[nextIdx]
+			if res.err == nil {
+				c.streamTtsFile(res.text, res.filename)
+			}
+			nextIdx++
+		}
 	}
 
 	time.Sleep(time.Duration(500) * time.Millisecond)

@@ -24,7 +24,7 @@ func NewOpenAi(apiKey string) SpeechToText {
 
 	return &OpenAi{
 		apiKey:   apiKey,
-		model:    "whisper-large-v3",
+		model:    "whisper-large-v3-turbo",
 		language: "vi",
 		baseURL:  "https://api.groq.com/openai/v1",
 	}

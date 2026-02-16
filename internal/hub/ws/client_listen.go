@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/phamviet/xiaozhi-hub/internal/hub/ws/types"
 )
@@ -29,9 +31,31 @@ func (c *Client) handleListenMessage(msg []byte) error {
 		//if err := c.Services().History.SaveMessage(c.SessionID(), "user", listenMsg.Text); err != nil {
 		//	c.Logger().Error("Failed to save message history", "error", err)
 		//}
-
-		c.Chat(listenMsg.Text)
+		c.listenChan <- listenMsg.Text
+		//c.Chat(listenMsg.Text)
 	}
 
 	return nil
+}
+
+func (c *Client) processListenChan() {
+	defer c.workerWg.Done()
+
+	for text := range c.listenChan {
+		ctx, cancel := context.WithTimeout(c.ctx, 3*time.Minute)
+		done := make(chan struct{})
+
+		go func() {
+			defer close(done)
+			c.Chat(ctx, text)
+		}()
+
+		select {
+		case <-done:
+			cancel()
+		case <-ctx.Done():
+			cancel()
+			c.logger.Warn("Work timeout or cancelled")
+		}
+	}
 }

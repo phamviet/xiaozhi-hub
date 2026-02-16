@@ -47,7 +47,9 @@ func (c *Client) handleHelloMessage(data []byte) error {
 	}
 
 	ctx := context.Background()
+	c.logger.Debug("Starting MCP client...")
 	if err := c.mcpClient.Start(ctx); err != nil {
+		c.logger.Error("MCP start failed", "error", err)
 		return err
 	}
 
@@ -62,13 +64,15 @@ func (c *Client) handleHelloMessage(data []byte) error {
 		},
 	}
 
-	initResult, err := c.mcpClient.Initialize(ctx, initRequest)
-	if err != nil {
-		c.logger.Error("initialize mcp failed", "error", err)
-		return err
-	}
+	go func() {
+		c.logger.Debug("Initializing MCP client...")
+		initResult, err := c.mcpClient.Initialize(ctx, initRequest)
+		if err != nil {
+			c.logger.Error("initialize mcp failed", "error", err)
+		}
 
-	c.logger.Info("MCP initialized", "result", initResult)
+		c.logger.Info("MCP initialized", "result", initResult)
+	}()
 
 	return nil
 }
