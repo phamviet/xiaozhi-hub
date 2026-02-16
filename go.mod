@@ -11,7 +11,7 @@ require (
 	github.com/hraban/opus v0.0.0-20251117090126-c76ea7e21bf3
 	github.com/k2-fsa/sherpa-onnx-go v1.12.22
 	github.com/lxzan/gws v1.8.9
-	github.com/mark3labs/mcp-go v0.36.0
+	github.com/modelcontextprotocol/go-sdk v1.3.0
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pocketbase/pocketbase v0.36.2
 	github.com/spf13/cobra v1.10.2
@@ -42,6 +42,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/dotprompt/go v0.0.0-20251014011017-8d056e027254 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect

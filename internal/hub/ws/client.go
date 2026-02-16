@@ -13,13 +13,13 @@ import (
 	"github.com/firebase/genkit/go/core/x/session"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/lxzan/gws"
-	"github.com/mark3labs/mcp-go/client"
+	gomcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/phamviet/xiaozhi-hub/internal/asr"
 	"github.com/phamviet/xiaozhi-hub/internal/audio"
 	"github.com/phamviet/xiaozhi-hub/internal/hub/services"
 	"github.com/phamviet/xiaozhi-hub/internal/hub/ws/handlers"
 	"github.com/phamviet/xiaozhi-hub/internal/hub/ws/types"
-	imcp "github.com/phamviet/xiaozhi-hub/internal/mcp"
+	"github.com/phamviet/xiaozhi-hub/internal/mcp"
 	"github.com/phamviet/xiaozhi-hub/internal/tts"
 )
 
@@ -42,7 +42,7 @@ type Client struct {
 	services   *services.ServiceContainer
 	logger     *slog.Logger
 
-	mcpClient *client.Client
+	mcpClient *gomcp.Client
 
 	ClientVersion         int
 	ClientAudioFormat     string
@@ -52,7 +52,7 @@ type Client struct {
 	ClientChannels        int
 	ClientFrameDuration   int
 
-	clientMcpTransport *imcp.WebsocketTransport
+	mcpTransport *mcp.XiaozhiTransport
 
 	startTime        time.Time
 	sampleRate       int
@@ -102,12 +102,8 @@ func NewClient(conn *gws.Conn, deviceID string, sessionID string, services *serv
 		listenChan: make(chan string, 100),
 	}
 
-	c.clientMcpTransport = imcp.NewWebsocketTransport(&imcp.WebsocketTransportConfig{
-		SessionID:     sessionID,
-		RequestWriter: c.sendMcpMessage,
-	})
+	c.mcpTransport = mcp.NewXiaozhiTransport(sessionID, c.SendJSON)
 
-	c.mcpClient = client.NewClient(c.clientMcpTransport)
 	c.initializeAgentFlow(nil)
 	c.defineTools()
 
