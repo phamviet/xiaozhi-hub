@@ -175,9 +175,7 @@ func (c *Client) initializeAgent(cfg *AgentConfig) {
 		return resp.Text(), nil
 	})
 
-	c.mu.Lock()
-	c.ready = true
-	c.mu.Unlock()
+	close(c.readyCh)
 }
 
 func (c *Client) Chat(ctx context.Context, text string) {

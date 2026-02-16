@@ -60,7 +60,7 @@ type Client struct {
 	exitIntentCalled bool
 
 	listenChan chan string
-	ready      bool
+	readyCh    chan struct{}
 	workChan   chan func()
 	workerWg   sync.WaitGroup
 }
@@ -102,7 +102,7 @@ func NewClient(conn *gws.Conn, deviceID string, sessionID string, services *serv
 		exitIntentCalled:      false,
 
 		listenChan: make(chan string, 100),
-		ready:      false,
+		readyCh:    make(chan struct{}),
 	}
 
 	c.mcpTransport = mcp.NewXiaozhiTransport(sessionID, c.SendJSON)
